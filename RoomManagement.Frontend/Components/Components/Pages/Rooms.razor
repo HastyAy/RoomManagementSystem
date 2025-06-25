@@ -1,0 +1,21 @@
+﻿@page "/rooms"
+@using RoomManager.Frontend.Services
+@using RoomManager.Shared.Entities
+@inject RoomService RoomService
+
+<h3>Rooms</h3>
+
+<RadzenDataGrid Data="@rooms"
+                TItem="Room"
+                Editable="true"
+                EditMode="DataGridEditMode.Single"
+                RowUpdate="@OnUpdateRoom">
+    <Columns>
+        <RadzenDataGridColumn TItem="Room" Property="Name" Title="Name" />
+        <RadzenDataGridColumn TItem="Room" Property="Capacity" Title="Capacity" />
+        <RadzenDataGridColumn TItem="Room" Property="Type" Title="Type" />
+    </Columns>
+</RadzenDataGrid>
+
+<RadzenButton Click="@ButtonClicked" Text="Hi"></RadzenButton>
+

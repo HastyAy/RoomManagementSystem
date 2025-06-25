@@ -1,4 +1,6 @@
+using Radzen;
 using RoomManagement.Frontend.Components;
+using RoomManager.Frontend.Services;
 
 namespace RoomManagement.Frontend
 {
@@ -8,9 +10,41 @@ namespace RoomManagement.Frontend
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            var environment = builder.Environment.EnvironmentName;
+
+            // Load the appropriate appsettings file
+            builder.Configuration
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true);
+
+            builder.Services.AddRadzenComponents();
             // Add services to the container.
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
+
+            builder.AddFrontendServices();
+
+            builder.Services.AddHttpClient<RoomService>(client =>
+            {
+                client.BaseAddress = new Uri("https://localhost:7012"); 
+            });
+
+            builder.Services.AddHttpClient<StudentService>(client =>
+            {
+                client.BaseAddress = new Uri("https://localhost:7084");
+            });
+
+            builder.Services.AddHttpClient<ProfessorService>(client =>
+            {
+                client.BaseAddress = new Uri("https://localhost:7084");
+            });
+
+            builder.Services.AddHttpClient<BookingService>(client =>
+            {
+                client.BaseAddress = new Uri("https://localhost:7084");
+            });
+
+
 
             var app = builder.Build();
 
