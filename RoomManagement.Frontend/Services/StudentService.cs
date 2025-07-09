@@ -1,7 +1,7 @@
 ﻿using System.Net.Http.Json;
 using RoomManager.Shared.Entities;
 
-namespace RoomManager.Frontend.Services;
+namespace RoomManagement.Frontend.Services;
 
 public class StudentService
 {
@@ -10,7 +10,10 @@ public class StudentService
     public StudentService(HttpClient http) => _http = http;
 
     public async Task<List<Student>> GetAllAsync() =>
-      await _http.GetFromJsonAsync<List<Student>>("api/student") ?? new();
+        await _http.GetFromJsonAsync<List<Student>>("api/student") ?? new();
+
+    public async Task<Student?> GetByIdAsync(Guid id) =>
+        await _http.GetFromJsonAsync<Student>($"api/student/{id}");
 
     public async Task AddAsync(Student student) =>
         await _http.PostAsJsonAsync("api/student", student);
@@ -20,5 +23,4 @@ public class StudentService
 
     public async Task DeleteAsync(Guid id) =>
         await _http.DeleteAsync($"api/student/{id}");
-
 }

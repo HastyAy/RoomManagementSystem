@@ -1,0 +1,19 @@
+﻿@page "/test"
+@using Radzen
+@using Radzen.Blazor
+@inject NotificationService NotificationService
+<h3>Radzen Test</h3>
+
+<RadzenButton Text="Click Me" />
+<RadzenStack AlignItems="AlignItems.Center" class="rz-mx-auto rz-my-12">
+
+    <RadzenGravatar Email="info@radzen.com" />
+    <RadzenButton Click=@(args => OnClick("Primary button")) Text="Primary" ButtonStyle="ButtonStyle.Primary" />
+    <RadzenButton Variant="Variant.Outlined" Click=@(args => OnClick("Danger button")) Text="Danger" ButtonStyle="ButtonStyle.Danger" />
+    @code {
+        private void OnClick(string text)
+        {
+        NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Info, Summary = "Button Clicked", Detail = text });
+        }
+    }
+</RadzenStack>

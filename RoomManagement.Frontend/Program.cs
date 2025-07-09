@@ -1,6 +1,6 @@
 using Radzen;
 using RoomManagement.Frontend.Components;
-using RoomManager.Frontend.Services;
+using RoomManagement.Frontend.Services;
 
 namespace RoomManagement.Frontend
 {

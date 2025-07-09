@@ -14,15 +14,22 @@ namespace RoomManager.BookingService.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Professor>>> Get() => await _repo.GetAllAsync();
 
+        [HttpGet("{id}")]  
+        public async Task<ActionResult<Professor>> GetById(Guid id)
+        {
+            var professor = await _repo.GetByIdAsync(id);
+            return professor == null ? NotFound() : Ok(professor);
+        }
+
         [HttpPost]
-        public async Task<IActionResult> Post(Professor prof)
+        public async Task<IActionResult> Post([FromBody] Professor prof)
         {
             await _repo.AddAsync(prof);
-            return CreatedAtAction(nameof(Get), new { id = prof.Id }, prof);
+            return Ok(prof);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Put(Guid id, Professor prof)
+        public async Task<IActionResult> Put(Guid id, [FromBody] Professor prof)
         {
             if (id != prof.Id) return BadRequest();
             await _repo.UpdateAsync(prof);
@@ -36,5 +43,4 @@ namespace RoomManager.BookingService.Controllers
             return NoContent();
         }
     }
-
 }

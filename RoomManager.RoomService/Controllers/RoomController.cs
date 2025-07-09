@@ -21,7 +21,12 @@ public class RoomController : ControllerBase
         await _repo.AddAsync(room);
         return Ok(room);
     }
-
+    [HttpGet("{id}")]
+    public async Task<ActionResult<Room>> GetById(Guid id)
+    {
+        var room = await _repo.GetByIdAsync(id);
+        return room == null ? NotFound() : Ok(room);
+    }
     [HttpPut("{id}")]
     public async Task<ActionResult> Update(Guid id, Room room)
     {

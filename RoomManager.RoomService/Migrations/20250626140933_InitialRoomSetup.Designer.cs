@@ -12,8 +12,8 @@ using RoomManager.RoomService.Context;
 namespace RoomManager.RoomService.Migrations
 {
     [DbContext(typeof(RoomDbContext))]
-    [Migration("20250625150613_AddRooms")]
-    partial class AddRooms
+    [Migration("20250626140933_InitialRoomSetup")]
+    partial class InitialRoomSetup
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -33,6 +33,12 @@ namespace RoomManager.RoomService.Migrations
 
                     b.Property<int>("Capacity")
                         .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Location")
+                        .HasColumnType("longtext");
 
                     b.Property<string>("Name")
                         .IsRequired()

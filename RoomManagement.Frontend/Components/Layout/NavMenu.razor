@@ -1,6 +1,9 @@
 ﻿<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">RoomManagement.Frontend</a>
+        <a class="navbar-brand" href="">
+            <span class="brand-icon">🏢</span>
+            <span class="brand-text">RoomManager</span>
+        </a>
     </div>
 </div>
 
@@ -10,21 +13,38 @@
     <nav class="nav flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                <span class="nav-icon home-icon" aria-hidden="true"></span>
+                <span class="nav-text">Dashboard</span>
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
+            <NavLink class="nav-link" href="rooms">
+                <span class="nav-icon rooms-icon" aria-hidden="true"></span>
+                <span class="nav-text">Rooms</span>
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
+            <NavLink class="nav-link" href="bookings">
+                <span class="nav-icon bookings-icon" aria-hidden="true"></span>
+                <span class="nav-text">Bookings</span>
             </NavLink>
         </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="people">
+                <span class="nav-icon people-icon" aria-hidden="true"></span>
+                <span class="nav-text">People</span>
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="import">
+                <span class="nav-icon import-icon" aria-hidden="true"></span>
+                <span class="nav-text">Import Data</span>
+            </NavLink>
+        </div>
+
     </nav>
 </div>
-

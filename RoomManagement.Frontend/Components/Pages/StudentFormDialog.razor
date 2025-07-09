@@ -1,0 +1,57 @@
+﻿@using Radzen
+@using Radzen.Blazor
+@using RoomManagement.Frontend.Components.FormModels
+@inject DialogService DialogService
+
+<RadzenStack Gap="1rem">
+    <RadzenTemplateForm TItem="StudentFormModel" Data="@Student" Submit="@OnSubmit">
+        <DataAnnotationsValidator />
+        
+        <RadzenRow Gap="1rem">
+            <RadzenColumn Size="12">
+                <RadzenLabel Text="First Name" Style="font-weight: 600;" />
+                <RadzenTextBox @bind-Value="@Student.FirstName" Placeholder="Enter first name" 
+                              Style="width: 100%;" MaxLength="50" />
+   
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow Gap="1rem">
+            <RadzenColumn Size="12">
+                <RadzenLabel Text="Last Name" Style="font-weight: 600;" />
+                <RadzenTextBox @bind-Value="@Student.LastName" Placeholder="Enter last name" 
+                              Style="width: 100%;" MaxLength="50" />
+
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow Gap="1rem">
+            <RadzenColumn Size="12">
+                <RadzenLabel Text="Email" Style="font-weight: 600;" />
+                <RadzenTextBox @bind-Value="@Student.Email" Placeholder="Enter email address" 
+                              Style="width: 100%;" MaxLength="100" />
+
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow Gap="1rem">
+            <RadzenColumn Size="12">
+                <RadzenLabel Text="Matrikelnummer" Style="font-weight: 600;" />
+                <RadzenTextBox @bind-Value="@Student.MatriNumber" Placeholder="Enter student ID" 
+                              Style="width: 100%;" MaxLength="20" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow Gap="1rem" Style="margin-top: 1.5rem;">
+            <RadzenColumn Size="6">
+                <RadzenButton Text="Cancel" Click="@Cancel" ButtonStyle="ButtonStyle.Light" 
+                             Style="width: 100%;" />
+            </RadzenColumn>
+            <RadzenColumn Size="6">
+                <RadzenButton Text="@(IsEdit ? "Update" : "Create")" ButtonType="ButtonType.Submit" 
+                             ButtonStyle="ButtonStyle.Primary" Style="width: 100%;" />
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenTemplateForm>
+</RadzenStack>
+

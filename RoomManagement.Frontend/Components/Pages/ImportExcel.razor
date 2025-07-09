@@ -1,0 +1,165 @@
+﻿@page "/import"
+@using RoomManagement.Frontend.Services
+@using RoomManager.Shared.Entities
+@using Radzen
+@using Radzen.Blazor
+@using System.IO
+@using OfficeOpenXml
+@inject NotificationService NotificationService
+@inject ImportService ImportService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Import Excel Files</PageTitle>
+
+<div class="container">
+    <h3 class="page-title">Import Excel Files</h3>
+
+    <!-- Import Type Selection -->
+    <RadzenRow Gap="2rem" class="rz-m-0 rz-m-md-12" Style="margin-bottom: 2rem;">
+        <RadzenColumn Size="12">
+            <RadzenCard Variant="Variant.Outlined">
+                <RadzenText TextStyle="TextStyle.Subtitle1" TagName="TagName.H4" Style="margin-bottom: 15px;">
+                    Select Import Type
+                </RadzenText>
+                <RadzenSelectBar @bind-Value="@importType" TextProperty="Text" ValueProperty="Value"
+                                 Data="@importTypeOptions" Size="ButtonSize.Medium" />
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <!-- File Upload Section -->
+    <RadzenRow Gap="2rem" RowGap="2rem" class="rz-m-0 rz-m-md-12">
+        <RadzenColumn Size="12">
+            <RadzenCard Variant="Variant.Outlined" Style="box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); border-radius: 8px;">
+                <RadzenText TextStyle="TextStyle.Subtitle1" TagName="TagName.H4" Style="margin-bottom: 10px;">
+                    Drag and drop files to upload or click to choose Excel files
+                </RadzenText>
+
+                <RadzenUpload id="excelUpload"
+                              @ref="uploadComponent"
+                              ChooseText="Drag and drop here or click to choose files"
+                              Auto="false"
+                              Multiple="true"
+                              MaxFileSize="10485760"
+                              Accept=".xlsx,.xls"
+                              Change="@OnFileChange"
+                              Style="height: 300px; width: 100%; background-color: #f4f6f9; border-radius: 8px; border: 2px dashed #4CAF50; display: flex; align-items: center; justify-content: center; color: #4CAF50; font-size: 16px; transition: background-color 0.3s;" />
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <!-- File List and Actions -->
+    @if (uploadedFiles.Any())
+    {
+        <div class="file-section">
+            <h4 class="file-list-title">Select Files to Import (@uploadedFiles.Count files)</h4>
+
+            <div class="file-actions">
+                <RadzenButton Text="Select All" Icon="check_box" Click="@SelectAllFiles"
+                              Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Info" />
+                <RadzenButton Text="Clear All" Icon="clear" Click="@ClearAllFiles"
+                              Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Light" />
+                <RadzenButton Text="Import Selected Files" Icon="upload" Click="@ImportSelectedFiles"
+                              Size="ButtonSize.Medium" ButtonStyle="ButtonStyle.Success"
+                              Disabled="@(isImporting || !uploadedFiles.Any(f => f.IsSelected))" />
+            </div>
+
+            <div class="file-list">
+                @foreach (var file in uploadedFiles.ToList())
+                {
+                    <div class="file-item @(file.IsSelected ? "selected" : "")">
+                        <RadzenCheckBox @bind-Value="file.IsSelected" TValue="bool" />
+                        <div class="file-info">
+                            <span class="file-name">@file.Name</span>
+                            <span class="file-size">(@(FormatFileSize(file.Size)))</span>
+                        </div>
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Text"
+                                      Size="ButtonSize.Small" Click="@(() => RemoveFile(file))" />
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Import Progress -->
+    @if (isImporting)
+    {
+        <RadzenCard Style="margin-top: 2rem;">
+            <RadzenText TextStyle="TextStyle.H6" Text="Importing Files..." />
+            <RadzenProgressBar Value="@importProgress" Max="100" Style="margin-top: 1rem;" />
+            <RadzenText Text="@importStatus" Style="margin-top: 0.5rem; font-size: 0.875rem;" />
+        </RadzenCard>
+    }
+
+    <!-- Import Results -->
+    @if (importResults != null)
+    {
+        <div class="results-section">
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.H5" Text="Import Results" />
+
+                <div class="results-summary">
+                    <div class="result-item success">
+                        <RadzenIcon Icon="check_circle" />
+                        <span>Successfully imported: @importResults.SuccessCount</span>
+                    </div>
+                    <div class="result-item error">
+                        <RadzenIcon Icon="error" />
+                        <span>Failed to import: @importResults.ErrorCount</span>
+                    </div>
+                    <div class="result-item info">
+                        <RadzenIcon Icon="info" />
+                        <span>Total processed: @importResults.TotalCount</span>
+                    </div>
+                </div>
+
+                @if (importResults.Errors.Any())
+                {
+                    <RadzenText TextStyle="TextStyle.Subtitle1" Text="Errors:" Style="margin-top: 1rem;" />
+                    <div class="error-list">
+                        @foreach (var error in importResults.Errors)
+                        {
+                            <div class="error-item">
+                                <RadzenIcon Icon="error" Style="color: red;" />
+                                <span>@error.FileName - Row @error.Row: @error.Message</span>
+                            </div>
+                        }
+                    </div>
+                }
+
+                <RadzenButton Text="Clear Results" Icon="clear" Click="@ClearResults"
+                              ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                              Style="margin-top: 1rem;" />
+            </RadzenCard>
+        </div>
+    }
+
+    <!-- Help Section -->
+    <div class="help-section">
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.H6" Text="Import Guidelines" />
+            <div class="guidelines">
+                <h4>Required Excel Format:</h4>
+                @if (importType == "students")
+                {
+                    <ul>
+                        <li>Column A: FirstName (required)</li>
+                        <li>Column B: LastName (required)</li>
+                        <li>Column C: MatriNumber (required, unique)</li>
+                        <li>Column D: Email (required, valid email)</li>
+                    </ul>
+                }
+                else
+                {
+                    <ul>
+                        <li>Column A: FirstName (required)</li>
+                        <li>Column B: LastName (required)</li>
+                        <li>Column C: Email (required, valid email)</li>
+                    </ul>
+                }
+                <p><strong>Note:</strong> First row should contain headers. Supported formats: .xlsx, .xls</p>
+            </div>
+        </RadzenCard>
+    </div>
+</div>
+

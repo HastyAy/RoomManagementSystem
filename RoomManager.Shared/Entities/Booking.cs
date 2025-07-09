@@ -21,6 +21,8 @@ namespace RoomManager.Shared.Entities
 
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
+
+        public string? Purpose { get; set; }
     }
 
 }

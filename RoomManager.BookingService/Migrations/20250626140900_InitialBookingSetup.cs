@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace RoomManager.BookingService.Migrations
 {
     /// <inheritdoc />
-    public partial class AddStudentAndBooking : Migration
+    public partial class InitialBookingSetup : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -41,6 +41,10 @@ namespace RoomManager.BookingService.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     Capacity = table.Column<int>(type: "int", nullable: false),
                     Type = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Location = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Description = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4")
                 },
                 constraints: table =>
@@ -78,7 +82,9 @@ namespace RoomManager.BookingService.Migrations
                     StudentId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     ProfessorId = table.Column<Guid>(type: "char(36)", nullable: true, collation: "ascii_general_ci"),
                     StartTime = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    EndTime = table.Column<DateTime>(type: "datetime(6)", nullable: false)
+                    EndTime = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    Purpose = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4")
                 },
                 constraints: table =>
                 {

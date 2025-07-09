@@ -12,8 +12,8 @@ using RoomManager.BookingService.Context;
 namespace RoomManager.BookingService.Migrations
 {
     [DbContext(typeof(BookingDbContext))]
-    [Migration("20250625150420_AddStudentAndBooking")]
-    partial class AddStudentAndBooking
+    [Migration("20250626140900_InitialBookingSetup")]
+    partial class InitialBookingSetup
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -36,6 +36,9 @@ namespace RoomManager.BookingService.Migrations
 
                     b.Property<Guid?>("ProfessorId")
                         .HasColumnType("char(36)");
+
+                    b.Property<string>("Purpose")
+                        .HasColumnType("longtext");
 
                     b.Property<Guid>("RoomId")
                         .HasColumnType("char(36)");
@@ -88,6 +91,12 @@ namespace RoomManager.BookingService.Migrations
 
                     b.Property<int>("Capacity")
                         .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Location")
+                        .HasColumnType("longtext");
 
                     b.Property<string>("Name")
                         .IsRequired()

@@ -1,0 +1,239 @@
+﻿@page "/people"
+@using RoomManagement.Frontend.Components.FormModels
+@using RoomManagement.Frontend.Services
+@using RoomManager.Shared.Entities
+@using Radzen
+@using Radzen.Blazor
+@using System.ComponentModel.DataAnnotations
+@inject StudentService StudentService
+@inject ProfessorService ProfessorService
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>People Management</PageTitle>
+
+<div class="people-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <div class="header-content">
+            <div class="header-info">
+                <h1 class="page-title">People Management</h1>
+                <p class="page-subtitle">Manage students and professors</p>
+            </div>
+            <div class="header-actions">
+                <RadzenButton Click="@OpenAddStudentDialog" Icon="add" Text="Add Student"
+                ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Medium" />
+                <RadzenButton Click="@OpenAddProfessorDialog" Icon="add" Text="Add Professor"
+                ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Medium" />
+            </div>
+        </div>
+
+        <!-- Global Filters -->
+        <div class="filters-section">
+            <RadzenCard Style="padding: 1rem;">
+                <div class="filters-grid">
+                    <div class="filter-group">
+                        <RadzenLabel Text="View Mode" Style="font-weight: 600; margin-bottom: 0.5rem;" />
+                        <RadzenSelectBar @bind-Value="@viewMode" TextProperty="Text" ValueProperty="Value"
+                        Data="@viewModeOptions" Size="ButtonSize.Medium" />
+                    </div>
+
+                    <div class="filter-group">
+                        <RadzenLabel Text="Page Size" Style="font-weight: 600; margin-bottom: 0.5rem;" />
+                        <RadzenDropDown Data="@pageSizeOptions" @bind-Value="@PageSize"
+                        TextProperty="Label" ValueProperty="Value"
+                        Change="@OnPageSizeChanged" Placeholder="Select Page Size"
+                        Style="width: 150px;" />
+                    </div>
+
+                    <div class="filter-group">
+                        <RadzenLabel Text="Global Search" Style="font-weight: 600; margin-bottom: 0.5rem;" />
+                        <RadzenTextBox @bind-Value="@globalSearchTerm" @bind-Value:after="ApplyGlobalFilter"
+                        Placeholder="Search by name or email..." Style="width: 250px;" />
+                    </div>
+                </div>
+            </RadzenCard>
+        </div>
+    </div>
+
+    <!-- Students Grid -->
+    @if (viewMode == "students" || viewMode == "both")
+    {
+        <div class="grid-section">
+            <RadzenCard>
+                <div class="grid-header">
+                    <RadzenText TextStyle="TextStyle.H5" Text="Students" />
+                    <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@filteredStudents.Count.ToString()" />
+                </div>
+
+                <RadzenDataGrid @ref="studentsGrid" TItem="Student"
+                Data="@filteredStudents"
+                Count="@filteredStudents.Count"
+                AllowPaging="true"
+                PageSize="@PageSize"
+                AllowSorting="true"
+                AllowFiltering="true"
+                FilterMode="FilterMode.Advanced"
+                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                AllowColumnResize="true"
+                AllowColumnReorder="true"
+                ColumnWidth="150px"
+                EditMode="DataGridEditMode.Single"
+                RowUpdate="@OnUpdateStudent"
+                CellClick="@OnStudentCellClick"
+                Style="height: 500px;">
+
+                    <Columns>
+                        <RadzenDataGridColumn TItem="Student" Property="FirstName" Title="First Name" Frozen="true">
+                            <Template Context="student">
+                                @if (IsStudentEditing(nameof(student.FirstName), student))
+                                {
+                                    <RadzenTextBox @bind-Value="@student.FirstName" Style="width:100%" />
+                                }
+                                else
+                                {
+                                    <RadzenText Text="@student.FirstName" />
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn TItem="Student" Property="LastName" Title="Last Name">
+                            <Template Context="student">
+                                @if (IsStudentEditing(nameof(student.LastName), student))
+                                {
+                                    <RadzenTextBox @bind-Value="@student.LastName" Style="width:100%" />
+                                }
+                                else
+                                {
+                                    <RadzenText Text="@student.LastName" />
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn TItem="Student" Property="Email" Title="Email">
+                            <Template Context="student">
+                                @if (IsStudentEditing(nameof(student.Email), student))
+                                {
+                                    <RadzenTextBox @bind-Value="@student.Email" Style="width:100%" />
+                                }
+                                else
+                                {
+                                    <RadzenText Text="@student.Email" />
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn TItem="Student" Property="MatriNumber" Title="Matrikelnummer">
+                            <Template Context="student">
+                                @if (IsStudentEditing(nameof(student.MatriNumber), student))
+                                {
+                                    <RadzenTextBox @bind-Value="@student.MatriNumber" Style="width:100%" />
+                                }
+                                else
+                                {
+                                    <RadzenText Text="@student.MatriNumber" />
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn TItem="Student" Context="student" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="160px">
+                            <Template Context="student">
+                                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Info" Variant="Variant.Flat"
+                                Size="ButtonSize.Small" Click="@(args => OpenEditStudentDialog(student))"
+                                @onclick:stopPropagation="true" />
+                                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat"
+                                Size="ButtonSize.Small" Click="@(args => DeleteStudent(student))"
+                                @onclick:stopPropagation="true" />
+                            </Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+            </RadzenCard>
+        </div>
+    }
+
+    <!-- Professors Grid -->
+    @if (viewMode == "professors" || viewMode == "both")
+    {
+        <div class="grid-section">
+            <RadzenCard>
+                <div class="grid-header">
+                    <RadzenText TextStyle="TextStyle.H5" Text="Professors" />
+                    <RadzenBadge BadgeStyle="BadgeStyle.Success" Text="@filteredProfessors.Count.ToString()" />
+                </div>
+
+                <RadzenDataGrid @ref="professorsGrid" TItem="Professor"
+                Data="@filteredProfessors"
+                Count="@filteredProfessors.Count"
+                AllowPaging="true"
+                PageSize="@PageSize"
+                AllowSorting="true"
+                AllowFiltering="true"
+                FilterMode="FilterMode.Advanced"
+                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                AllowColumnResize="true"
+                AllowColumnReorder="true"
+                ColumnWidth="150px"
+                EditMode="DataGridEditMode.Single"
+                RowUpdate="@OnUpdateProfessor"
+                CellClick="@OnProfessorCellClick"
+                Style="height: 500px;">
+
+                    <Columns>
+                        <RadzenDataGridColumn TItem="Professor" Property="FirstName" Title="First Name" Frozen="true">
+                            <Template Context="professor">
+                                @if (IsProfessorEditing(nameof(professor.FirstName), professor))
+                                {
+                                    <RadzenTextBox @bind-Value="@professor.FirstName" Style="width:100%" />
+                                }
+                                else
+                                {
+                                    <RadzenText Text="@professor.FirstName" />
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn TItem="Professor" Property="LastName" Title="Last Name">
+                            <Template Context="professor">
+                                @if (IsProfessorEditing(nameof(professor.LastName), professor))
+                                {
+                                    <RadzenTextBox @bind-Value="@professor.LastName" Style="width:100%" />
+                                }
+                                else
+                                {
+                                    <RadzenText Text="@professor.LastName" />
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn TItem="Professor" Property="Email" Title="Email">
+                            <Template Context="professor">
+                                @if (IsProfessorEditing(nameof(professor.Email), professor))
+                                {
+                                    <RadzenTextBox @bind-Value="@professor.Email" Style="width:100%" />
+                                }
+                                else
+                                {
+                                    <RadzenText Text="@professor.Email" />
+                                }
+                            </Template>
+                        </RadzenDataGridColumn>
+
+                        <RadzenDataGridColumn TItem="Professor" Context="professor" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Width="160px">
+                            <Template Context="professor">
+                                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Info" Variant="Variant.Flat"
+                                Size="ButtonSize.Small" Click="@(args => OpenEditProfessorDialog(professor))"
+                                @onclick:stopPropagation="true" />
+                                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat"
+                                Size="ButtonSize.Small" Click="@(args => DeleteProfessor(professor))"
+                                @onclick:stopPropagation="true" />
+                            </Template>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+            </RadzenCard>
+        </div>
+    }
+</div>
+

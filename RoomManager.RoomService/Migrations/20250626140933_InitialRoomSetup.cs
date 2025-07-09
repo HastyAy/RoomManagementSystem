@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace RoomManager.RoomService.Migrations
 {
     /// <inheritdoc />
-    public partial class AddRooms : Migration
+    public partial class InitialRoomSetup : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -23,6 +23,10 @@ namespace RoomManager.RoomService.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     Capacity = table.Column<int>(type: "int", nullable: false),
                     Type = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Location = table.Column<string>(type: "longtext", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Description = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4")
                 },
                 constraints: table =>

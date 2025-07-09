@@ -1,0 +1,170 @@
+﻿@page "/rooms"
+@using RoomManagement.Frontend.Services
+@using RoomManager.Shared.Entities
+@using Radzen
+@using Radzen.Blazor
+@inject RoomService RoomService
+@inject NotificationService NotificationService
+@inject DialogService DialogService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Room Management</PageTitle>
+
+<div class="rooms-container">
+    <!-- Header Section -->
+    <div class="header-section">
+        <RadzenCard>
+            <div class="header-content">
+                <div class="header-info">
+                    <RadzenText TextStyle="TextStyle.H3" Text="Room Management" Style="margin: 0; font-weight: 900;" />
+                    <RadzenText TextStyle="TextStyle.Body1" Text="Manage all rooms, capacities, and availability"
+                    Style="color: #6b7280; margin: 0.5rem 0 0 0;" />
+                </div>
+                <RadzenButton Click="@OpenCreateModal" Icon="add" Text="Add New Room"
+                ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Medium" />
+            </div>
+        </RadzenCard>
+    </div>
+
+    <!-- Search and Filter Bar -->
+    <div class="controls-section" style="margin-bottom: 2rem;">
+        <RadzenCard Style="padding: 1rem;">
+            <RadzenRow Gap="1rem" AlignItems="AlignItems.Center">
+                <RadzenColumn Size="12" SizeMD="6">
+                    <RadzenLabel Text="Search Rooms" Style="font-weight: 600; margin-bottom: 0.5rem;" />
+                    <RadzenTextBox @bind-Value="@searchTerm" @bind-Value:after="FilterRooms"
+                    Placeholder="Search by name, type, or location..."
+                    Style="width: 100%;" />
+                </RadzenColumn>
+                <RadzenColumn Size="6" SizeMD="3">
+                    <RadzenLabel Text="Room Type" Style="font-weight: 600; margin-bottom: 0.5rem;" />
+                    <RadzenDropDown @bind-Value="@selectedType" @bind-Value:after="FilterRooms"
+                    Data="@roomTypes" Placeholder="All Types" AllowClear="true"
+                    Style="width: 100%;" />
+                </RadzenColumn>
+                <RadzenColumn Size="6" SizeMD="3">
+                    <RadzenLabel Text="Capacity" Style="font-weight: 600; margin-bottom: 0.5rem;" />
+                    <RadzenDropDown @bind-Value="@selectedCapacity" @bind-Value:after="FilterRooms"
+                    Data="@capacityOptions" TextProperty="Text" ValueProperty="Value"
+                    Placeholder="All Capacities" AllowClear="true"
+                    Style="width: 100%;" />
+                </RadzenColumn>
+            </RadzenRow>
+        </RadzenCard>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-section" style="margin-bottom: 2rem;">
+        <RadzenRow Gap="1.5rem">
+            <RadzenColumn Size="6" SizeMD="3">
+                <RadzenCard Style="padding: 1.5rem; text-align: center; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);">
+                    <RadzenIcon Icon="location_on" Style="font-size: 2rem; color: #2563eb; margin-bottom: 0.5rem;" />
+                    <RadzenText TextStyle="TextStyle.H4" Text="@totalRooms.ToString()" Style="margin: 0; color: #1f2937;" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="Total Rooms" Style="color: #6b7280;" />
+                </RadzenCard>
+            </RadzenColumn>
+            <RadzenColumn Size="6" SizeMD="3">
+                <RadzenCard Style="padding: 1.5rem; text-align: center; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);">
+                    <RadzenIcon Icon="check_circle" Style="font-size: 2rem; color: #059669; margin-bottom: 0.5rem;" />
+                    <RadzenText TextStyle="TextStyle.H4" Text="@availableRooms.ToString()" Style="margin: 0; color: #1f2937;" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="Available Now" Style="color: #6b7280;" />
+                </RadzenCard>
+            </RadzenColumn>
+            <RadzenColumn Size="6" SizeMD="3">
+                <RadzenCard Style="padding: 1.5rem; text-align: center; background: linear-gradient(135deg, #e9d5ff 0%, #ddd6fe 100%);">
+                    <RadzenIcon Icon="group" Style="font-size: 2rem; color: #7c3aed; margin-bottom: 0.5rem;" />
+                    <RadzenText TextStyle="TextStyle.H4" Text="@totalCapacity.ToString()" Style="margin: 0; color: #1f2937;" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="Total Capacity" Style="color: #6b7280;" />
+                </RadzenCard>
+            </RadzenColumn>
+            <RadzenColumn Size="6" SizeMD="3">
+                <RadzenCard Style="padding: 1.5rem; text-align: center; background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);">
+                    <RadzenIcon Icon="trending_up" Style="font-size: 2rem; color: #ea580c; margin-bottom: 0.5rem;" />
+                    <RadzenText TextStyle="TextStyle.H4" Text="@($"{utilizationRate}%")" Style="margin: 0; color: #1f2937;" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="Utilization" Style="color: #6b7280;" />
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+    </div>
+
+    <!-- Loading State -->
+    @if (loading)
+    {
+        <RadzenRow Gap="1.5rem">
+            @for (int i = 0; i < 6; i++)
+            {
+                <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                    <RadzenCard Style="padding: 1.5rem;">
+                        <RadzenText TextStyle="TextStyle.H6" Text="Loading..." />
+                        <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" Style="margin-top: 1rem;" />
+                    </RadzenCard>
+                </RadzenColumn>
+            }
+        </RadzenRow>
+    }
+    else if (!filteredRooms.Any())
+    {
+        <!-- Empty State -->
+        <RadzenCard Style="padding: 4rem 2rem; text-align: center;">
+            <RadzenIcon Icon="location_off" Style="font-size: 4rem; color: #9ca3af; margin-bottom: 1rem;" />
+            <RadzenText TextStyle="TextStyle.H5" Text="No rooms found" Style="color: #1f2937; margin-bottom: 0.5rem;" />
+            <RadzenText TextStyle="TextStyle.Body1" Text="@(string.IsNullOrEmpty(searchTerm) ? "Get started by adding your first room." : "Try adjusting your search or filters.")"
+            Style="color: #6b7280; margin-bottom: 1.5rem;" />
+            <RadzenButton Click="@OpenCreateModal" Icon="add" Text="Add New Room"
+            ButtonStyle="ButtonStyle.Primary" />
+        </RadzenCard>
+    }
+    else
+    {
+        <!-- Rooms Grid -->
+        <RadzenRow Gap="1.5rem">
+            @foreach (var room in filteredRooms)
+            {
+                <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                    <RadzenCard Style="padding: 1.5rem; height: 100%; display: flex; flex-direction: column;">
+                        <!-- Room Header -->
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                            <div>
+                                <RadzenText TextStyle="TextStyle.H6" Text="@room.Name" Style="margin: 0 0 0.25rem 0; color: #1f2937;" />
+                                <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@(room.Type ?? "General")" />
+                            </div>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <RadzenButton Click="@(() => EditRoom(room))" Icon="edit" ButtonStyle="ButtonStyle.Light"
+                                Variant="Variant.Flat" Size="ButtonSize.Small" />
+                                <RadzenButton Click="@(() => DeleteRoom(room))" Icon="delete" ButtonStyle="ButtonStyle.Danger"
+                                Variant="Variant.Flat" Size="ButtonSize.Small" />
+                            </div>
+                        </div>
+
+                        <!-- Room Details -->
+                        <div style="flex-grow: 1; margin-bottom: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <RadzenIcon Icon="group" Style="color: #9ca3af;" />
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@($"Capacity: {room.Capacity}")" Style="color: #6b7280;" />
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(room.Location))
+                            {
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <RadzenIcon Icon="location_on" Style="color: #9ca3af;" />
+                                    <RadzenText TextStyle="TextStyle.Body2" Text="@room.Location" Style="color: #6b7280;" />
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrEmpty(room.Description))
+                            {
+                                <div style="margin-top: 0.5rem;">
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="@room.Description" Style="color: #6b7280;" />
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Room Status and Actions -->
+                  
+                    </RadzenCard>
+                </RadzenColumn>
+            }
+        </RadzenRow>
+    }
+</div>
+

@@ -36,6 +36,12 @@ namespace RoomManager.BookingService.Repositories
             await _context.SaveChangesAsync();
         }
 
+        public async Task UpdateAsync(Booking booking)
+        {
+            _context.Bookings.Update(booking);
+            await _context.SaveChangesAsync();
+        }
+
         public async Task DeleteAsync(Guid id)
         {
             var booking = await _context.Bookings.FindAsync(id);
@@ -46,5 +52,4 @@ namespace RoomManager.BookingService.Repositories
             }
         }
     }
-
 }

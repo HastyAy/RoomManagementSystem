@@ -34,6 +34,9 @@ namespace RoomManager.BookingService.Migrations
                     b.Property<Guid?>("ProfessorId")
                         .HasColumnType("char(36)");
 
+                    b.Property<string>("Purpose")
+                        .HasColumnType("longtext");
+
                     b.Property<Guid>("RoomId")
                         .HasColumnType("char(36)");
 
@@ -85,6 +88,12 @@ namespace RoomManager.BookingService.Migrations
 
                     b.Property<int>("Capacity")
                         .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Location")
+                        .HasColumnType("longtext");
 
                     b.Property<string>("Name")
                         .IsRequired()

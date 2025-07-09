@@ -14,15 +14,22 @@ public class StudentController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Student>>> Get() => await _repo.GetAllAsync();
 
+    [HttpGet("{id}")]  
+    public async Task<ActionResult<Student>> GetById(Guid id)
+    {
+        var student = await _repo.GetByIdAsync(id);
+        return student == null ? NotFound() : Ok(student);
+    }
+
     [HttpPost]
-    public async Task<IActionResult> Post(Student student)
+    public async Task<IActionResult> Post([FromBody] Student student)
     {
         await _repo.AddAsync(student);
-        return CreatedAtAction(nameof(Get), new { id = student.Id }, student);
+        return Ok(student);
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Put(Guid id, Student student)
+    public async Task<IActionResult> Put(Guid id, [FromBody] Student student)
     {
         if (id != student.Id) return BadRequest();
         await _repo.UpdateAsync(student);
