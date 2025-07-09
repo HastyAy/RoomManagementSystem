@@ -1,0 +1,82 @@
+﻿@using RoomManager.Shared.DTOs
+@using Radzen
+@using Radzen.Blazor
+@using RoomManager.Shared.DTOs.RoomDto
+@inject DialogService DialogService
+
+<div style="padding: 1rem;">
+    <RadzenCard>
+        <RadzenStack Gap="1rem">
+            <!-- Room Header -->
+            <div style="display: flex; align-items: center; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #e5e7eb;">
+                <RadzenIcon Icon="meeting_room" Style="font-size: 2.5rem; color: #3b82f6;" />
+                <div>
+                    <RadzenText TextStyle="TextStyle.H5" Text="@Room.Name" Style="margin: 0; color: #1f2937;" />
+                    <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@Room.Type" Style="margin-top: 0.25rem;" />
+                </div>
+            </div>
+
+            <!-- Room Details Grid -->
+            <RadzenRow Gap="1rem">
+                <RadzenColumn Size="6">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <RadzenIcon Icon="group" Style="color: #6b7280;" />
+                        <div>
+                            <RadzenText TextStyle="TextStyle.Caption" Text="Capacity" Style="color: #6b7280; margin: 0;" />
+                            <RadzenText TextStyle="TextStyle.Body1" Text="@($"{Room.Capacity} people")" Style="color: #1f2937; margin: 0; font-weight: 600;" />
+                        </div>
+                    </div>
+                </RadzenColumn>
+
+                <RadzenColumn Size="6">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <RadzenIcon Icon="category" Style="color: #6b7280;" />
+                        <div>
+                            <RadzenText TextStyle="TextStyle.Caption" Text="Type" Style="color: #6b7280; margin: 0;" />
+                            <RadzenText TextStyle="TextStyle.Body1" Text="@Room.Type" Style="color: #1f2937; margin: 0; font-weight: 600;" />
+                        </div>
+                    </div>
+                </RadzenColumn>
+            </RadzenRow>
+
+            @if (!string.IsNullOrEmpty(Room.Location))
+            {
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                    <RadzenIcon Icon="location_on" Style="color: #6b7280;" />
+                    <div>
+                        <RadzenText TextStyle="TextStyle.Caption" Text="Location" Style="color: #6b7280; margin: 0;" />
+                        <RadzenText TextStyle="TextStyle.Body1" Text="@Room.Location" Style="color: #1f2937; margin: 0; font-weight: 600;" />
+                    </div>
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(Room.Description))
+            {
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+                    <RadzenText TextStyle="TextStyle.Caption" Text="Description" Style="color: #6b7280; margin: 0 0 0.25rem 0;" />
+                    <RadzenText TextStyle="TextStyle.Body1" Text="@Room.Description" Style="color: #1f2937; margin: 0; line-height: 1.5;" />
+                </div>
+            }
+
+            <!-- Room ID (for debugging/admin purposes) -->
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+                <RadzenText TextStyle="TextStyle.Caption" Text="Room ID" Style="color: #6b7280; margin: 0 0 0.25rem 0;" />
+                <RadzenText TextStyle="TextStyle.Caption" Text="@Room.Id.ToString()" Style="color: #9ca3af; margin: 0; font-family: monospace;" />
+            </div>
+        </RadzenStack>
+    </RadzenCard>
+
+    <!-- Dialog Actions -->
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem" Style="margin-top: 1.5rem;">
+        <RadzenButton Text="Close" Click="@Close" ButtonStyle="ButtonStyle.Secondary" />
+    </RadzenStack>
+</div>
+
+@code {
+    [Parameter] public RoomDto Room { get; set; } = new();
+
+    private void Close()
+    {
+        DialogService.Close();
+    }
+}

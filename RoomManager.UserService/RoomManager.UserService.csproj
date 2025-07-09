@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\" />
+    <ProjectReference Include="..\RoomManager.Shared\RoomManager.Shared.csproj" />
   </ItemGroup>
 
 </Project>

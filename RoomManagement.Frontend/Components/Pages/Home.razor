@@ -1,188 +1,277 @@
 ﻿@page "/"
 @page "/dashboard"
 @using RoomManagement.Frontend.Services
+@using RoomManager.Shared.DTOs
+@using Radzen
+@using Radzen.Blazor
 @inject BookingService BookingService
 @inject RoomService RoomService
+@inject StudentService StudentService
+@inject ProfessorService ProfessorService
 @inject NavigationManager Navigation
+@inject NotificationService NotificationService
 
-<PageTitle>Dashboard - Room Management</PageTitle>
+<PageTitle>Dashboard - Room Management System</PageTitle>
 
 <div class="dashboard-container">
     <!-- Header -->
     <div class="header-card">
-        <div class="header-icon">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-            </svg>
-        </div>
-        <div>
-            <h1 class="header-title">Room Management Dashboard</h1>
-            <p class="header-subtitle">Welcome back! Here's what's happening today.</p>
-        </div>
+        <RadzenCard Style="padding: 2rem; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white; border: none;">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <RadzenIcon Icon="dashboard" Style="font-size: 3rem; color: white;" />
+                <div>
+                    <RadzenText TextStyle="TextStyle.H3" Text="Room Management Dashboard"
+                                Style="color: white; margin: 0; font-weight: 900;" />
+                    <RadzenText TextStyle="TextStyle.Body1" Text="@GetWelcomeMessage()"
+                                Style="color: rgba(255,255,255,0.8); margin: 0.25rem 0 0 0;" />
+                </div>
+                <div style="margin-left: auto;">
+                    <RadzenButton Click="@RefreshData" Icon="refresh" ButtonStyle="ButtonStyle.Light"
+                                  Variant="Variant.Outlined" IsBusy="@loading" Text="Refresh" />
+                </div>
+            </div>
+        </RadzenCard>
     </div>
 
     <!-- Stats Grid -->
-    <div class="stats-grid">
-        <!-- Total Rooms Card -->
-        <div class="stat-card stat-card-blue">
-            <div class="stat-header">
-                <div class="stat-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                        <circle cx="12" cy="10" r="3"></circle>
-                    </svg>
-                </div>
-                <div class="stat-trend">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-                        <polyline points="17 6 23 6 23 12"></polyline>
-                    </svg>
-                    +2 this month
-                </div>
-            </div>
-            <h3 class="stat-title">Total Rooms</h3>
-            <p class="stat-value">@(loading ? "..." : totalRooms.ToString())</p>
-        </div>
+    <div class="stats-grid" style="margin-bottom: 2rem;">
+        <RadzenRow Gap="1.5rem">
+            <!-- Total Rooms Card -->
+            <RadzenColumn Size="6" SizeMD="3">
+                <RadzenCard Style="@GetStatCardStyle("blue")" @onclick="NavigateToRooms">
+                    <div style="cursor: pointer;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <RadzenIcon Icon="meeting_room" Style="font-size: 2rem; color: white;" />
+                            @if (!loading && totalRooms > lastMonthRooms)
+                            {
+                                <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="@($"+{totalRooms - lastMonthRooms}")" />
+                            }
+                        </div>
+                        <RadzenText TextStyle="TextStyle.Caption" Text="Total Rooms"
+                                    Style="color: rgba(255,255,255,0.8); margin: 0;" />
+                        <RadzenText TextStyle="TextStyle.H4" Text="@(loading ? "..." : totalRooms.ToString())"
+                                    Style="color: white; margin: 0; font-weight: 900;" />
+                        <RadzenText TextStyle="TextStyle.Caption" Text="@($"Capacity: {totalCapacity}")"
+                                    Style="color: rgba(255,255,255,0.6); margin: 0;" />
+                    </div>
+                </RadzenCard>
+            </RadzenColumn>
 
-        <!-- Active Bookings Card -->
-        <div class="stat-card stat-card-emerald">
-            <div class="stat-header">
-                <div class="stat-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                    </svg>
-                </div>
-                <div class="stat-trend">Live now</div>
-            </div>
-            <h3 class="stat-title">Active Bookings</h3>
-            <p class="stat-value">@(loading ? "..." : activeBookings.ToString())</p>
-            <p class="stat-subtitle">Currently in use</p>
-        </div>
+            <!-- Active Bookings Card -->
+            <RadzenColumn Size="6" SizeMD="3">
+                <RadzenCard Style="@GetStatCardStyle("green")" @onclick="NavigateToBookings">
+                    <div style="cursor: pointer;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <RadzenIcon Icon="play_circle" Style="font-size: 2rem; color: white;" />
+                            <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="Live" />
+                        </div>
+                        <RadzenText TextStyle="TextStyle.Caption" Text="Active Bookings"
+                                    Style="color: rgba(255,255,255,0.8); margin: 0;" />
+                        <RadzenText TextStyle="TextStyle.H4" Text="@(loading ? "..." : activeBookings.ToString())"
+                                    Style="color: white; margin: 0; font-weight: 900;" />
+                        <RadzenText TextStyle="TextStyle.Caption" Text="Currently in session"
+                                    Style="color: rgba(255,255,255,0.6); margin: 0;" />
+                    </div>
+                </RadzenCard>
+            </RadzenColumn>
 
-        <!-- Available Rooms Card -->
-        <div class="stat-card stat-card-purple">
-            <div class="stat-header">
-                <div class="stat-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                    </svg>
-                </div>
-                <div class="stat-trend">@utilizationRate% free</div>
-            </div>
-            <h3 class="stat-title">Available Rooms</h3>
-            <p class="stat-value">@(loading ? "..." : availableRooms.ToString())</p>
-        </div>
+            <!-- Available Rooms Card -->
+            <RadzenColumn Size="6" SizeMD="3">
+                <RadzenCard Style="@GetStatCardStyle("purple")" @onclick="NavigateToRooms">
+                    <div style="cursor: pointer;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <RadzenIcon Icon="check_circle" Style="font-size: 2rem; color: white;" />
+                            <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="@($"{availabilityRate}%")" />
+                        </div>
+                        <RadzenText TextStyle="TextStyle.Caption" Text="Available Rooms"
+                                    Style="color: rgba(255,255,255,0.8); margin: 0;" />
+                        <RadzenText TextStyle="TextStyle.H4" Text="@(loading ? "..." : availableRooms.ToString())"
+                                    Style="color: white; margin: 0; font-weight: 900;" />
+                        <RadzenText TextStyle="TextStyle.Caption" Text="Ready to book"
+                                    Style="color: rgba(255,255,255,0.6); margin: 0;" />
+                    </div>
+                </RadzenCard>
+            </RadzenColumn>
 
-        <!-- Today's Bookings Card -->
-        <div class="stat-card stat-card-orange">
-            <div class="stat-header">
-                <div class="stat-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                        <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                </div>
-                <div class="stat-trend">+20% vs yesterday</div>
-            </div>
-            <h3 class="stat-title">Today's Bookings</h3>
-            <p class="stat-value">@(loading ? "..." : todayBookings.ToString())</p>
-        </div>
+            <!-- People Card -->
+            <RadzenColumn Size="6" SizeMD="3">
+                <RadzenCard Style="@GetStatCardStyle("orange")" @onclick="NavigateToPeople">
+                    <div style="cursor: pointer;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <RadzenIcon Icon="group" Style="font-size: 2rem; color: white;" />
+                            <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="@($"S:{totalStudents} P:{totalProfessors}")" />
+                        </div>
+                        <RadzenText TextStyle="TextStyle.Caption" Text="Total People"
+                                    Style="color: rgba(255,255,255,0.8); margin: 0;" />
+                        <RadzenText TextStyle="TextStyle.H4" Text="@(loading ? "..." : (totalStudents + totalProfessors).ToString())"
+                                    Style="color: white; margin: 0; font-weight: 900;" />
+                        <RadzenText TextStyle="TextStyle.Caption" Text="Students & Professors"
+                                    Style="color: rgba(255,255,255,0.6); margin: 0;" />
+                    </div>
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
     </div>
 
     <!-- Main Content Grid -->
-    <div class="main-grid">
-        <!-- Utilization Chart -->
-        <div class="chart-card">
-            <div class="card-header">
-                <h2 class="card-title">Room Utilization</h2>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button class="tab-button active">Today</button>
-                    <button class="tab-button">Week</button>
-                    <button class="tab-button">Month</button>
+    <RadzenRow Gap="2rem" style="margin-bottom: 2rem;">
+        <!-- Utilization Overview -->
+        <RadzenColumn Size="12" SizeMD="8">
+            <RadzenCard Style="padding: 2rem; height: 400px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <RadzenText TextStyle="TextStyle.H5" Text="Room Utilization Overview" Style="margin: 0;" />
+                    <RadzenSelectBar @bind-Value="@selectedPeriod"
+                                     Data="@periodOptions"
+                                     TextProperty="Text"
+                                     ValueProperty="Value"
+                                     Size="ButtonSize.Small" />
                 </div>
-            </div>
 
-            <!-- Utilization Bar -->
-            <div class="utilization-bar">
-                <div class="utilization-header">
-                    <span style="font-size: 0.875rem; font-weight: 500; color: #374151;">Current Utilization</span>
-                    <span style="font-size: 0.875rem; font-weight: 900; color: #2563eb;">@utilizationRate%</span>
+                <!-- Utilization Progress -->
+                <div style="margin-bottom: 2rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <RadzenText TextStyle="TextStyle.Subtitle1" Text="Current Utilization" Style="margin: 0;" />
+                        <RadzenText TextStyle="TextStyle.H6" Text="@($"{utilizationRate}%")"
+                                    Style="margin: 0; color: #3b82f6; font-weight: 900;" />
+                    </div>
+                    <RadzenProgressBar Value="@utilizationRate" Style="height: 12px;" />
                 </div>
-                <div class="utilization-progress">
-                    <div class="utilization-fill" style="width: @(utilizationRate)%"></div>
-                </div>
-            </div>
 
-            <!-- Room Status Grid -->
-            <div class="room-grid">
+                <!-- Room Status Grid -->
                 @if (loading)
                 {
-                    @for (int i = 0; i < 4; i++)
-                    {
-                        <div class="room-card loading-pulse">
-                            <div style="height: 1rem; background: #e5e7eb; border-radius: 0.25rem; margin-bottom: 0.5rem;"></div>
-                            <div style="height: 0.75rem; background: #e5e7eb; border-radius: 9999px; width: 4rem;"></div>
-                        </div>
-                    }
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        @for (int i = 0; i < 4; i++)
+                        {
+                            <RadzenCard Style="padding: 1rem; min-height: 80px;">
+                                <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" Style="margin-bottom: 0.5rem;" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="Loading..." />
+                            </RadzenCard>
+                        }
+                    </div>
                 }
                 else
                 {
-                    @foreach (var room in sampleRooms)
-                    {
-                        <div class="room-card">
-                            <h4 class="room-name">@room.Name</h4>
-                            <span class="room-status @GetStatusClass(room.Status)">@room.Status</span>
-                        </div>
-                    }
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        @foreach (var room in recentRooms)
+                        {
+                            <RadzenCard Style="@GetRoomCardStyle(room.Status)" @onclick="@(() => ViewRoomDetails(room))">
+                                <div style="cursor: pointer;">
+                                    <RadzenText TextStyle="TextStyle.Subtitle2" Text="@room.Name"
+                                                Style="margin: 0 0 0.5rem 0; font-weight: 600;" />
+                                    <RadzenBadge BadgeStyle="@GetRoomStatusBadge(room.Status)" Text="@room.Status" />
+                                    @if (!string.IsNullOrEmpty(room.CurrentUser))
+                                    {
+                                        <RadzenText TextStyle="TextStyle.Caption" Text="@($"Used by: {room.CurrentUser}")"
+                                                    Style="margin: 0.25rem 0 0 0; color: #6b7280;" />
+                                    }
+                                </div>
+                            </RadzenCard>
+                        }
+                    </div>
                 }
-            </div>
-        </div>
+            </RadzenCard>
+        </RadzenColumn>
 
-    </div>
+        <!-- Recent Activity -->
+        <RadzenColumn Size="12" SizeMD="4">
+            <RadzenCard Style="padding: 2rem; height: 400px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <RadzenText TextStyle="TextStyle.H5" Text="Recent Activity" Style="margin: 0;" />
+                    <RadzenButton Icon="visibility" Text="View All" Size="ButtonSize.Small"
+                                  ButtonStyle="ButtonStyle.Light" Click="@NavigateToBookings" />
+                </div>
+
+                @if (loading)
+                {
+                    <RadzenStack Gap="1rem">
+                        @for (int i = 0; i < 3; i++)
+                        {
+                            <div style="display: flex; gap: 1rem; padding: 1rem; background: #f9fafb; border-radius: 0.75rem;">
+                                <div style="width: 40px; height: 40px; background: #e5e7eb; border-radius: 50%;"></div>
+                                <div style="flex: 1;">
+                                    <div style="height: 1rem; background: #e5e7eb; border-radius: 0.25rem; margin-bottom: 0.5rem;"></div>
+                                    <div style="height: 0.75rem; background: #e5e7eb; border-radius: 0.25rem; width: 60%;"></div>
+                                </div>
+                            </div>
+                        }
+                    </RadzenStack>
+                }
+                else
+                {
+                    <RadzenStack Gap="1rem" Style="max-height: 300px; overflow-y: auto;">
+                        @foreach (var activity in recentActivities.Take(5))
+                        {
+                            <div style="display: flex; gap: 1rem; padding: 1rem; background: #f8fafc; border-radius: 0.75rem; border: 1px solid #e2e8f0;">
+                                <div style="@GetActivityIconStyle(activity.Type)">
+                                    <RadzenIcon Icon="@GetActivityIcon(activity.Type)" Style="color: white;" />
+                                </div>
+                                <div style="flex: 1;">
+                                    <RadzenText TextStyle="TextStyle.Subtitle2" Text="@activity.Room"
+                                                Style="margin: 0 0 0.25rem 0; font-weight: 600;" />
+                                    <RadzenText TextStyle="TextStyle.Caption" Text="@activity.User"
+                                                Style="margin: 0 0 0.25rem 0; color: #6b7280;" />
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <RadzenBadge BadgeStyle="@GetActivityStatusBadge(activity.Status)" Text="@activity.Status" />
+                                        <RadzenText TextStyle="TextStyle.Caption" Text="@activity.Time"
+                                                    Style="margin: 0; color: #9ca3af;" />
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        @if (!recentActivities.Any())
+                        {
+                            <div style="text-align: center; padding: 2rem; color: #6b7280;">
+                                <RadzenIcon Icon="event_busy" Style="font-size: 3rem; color: #d1d5db; margin-bottom: 1rem;" />
+                                <RadzenText TextStyle="TextStyle.Body2" Text="No recent activity" Style="margin: 0;" />
+                            </div>
+                        }
+                    </RadzenStack>
+                }
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
 
     <!-- Quick Actions -->
-    <div class="quick-actions">
-        <button class="action-card action-blue" @onclick="NavigateToBookings">
-            <div class="action-content">
-                <h3>Book a Room</h3>
-                <p>Reserve a space quickly</p>
-            </div>
-            <svg class="action-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-        </button>
+    <RadzenCard Style="padding: 2rem;">
+        <RadzenText TextStyle="TextStyle.H5" Text="Quick Actions" Style="margin: 0 0 1.5rem 0;" />
+        <RadzenRow Gap="1.5rem">
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenButton Click="@NavigateToNewBooking" Style="@GetActionCardStyle("blue")" Size="ButtonSize.Large">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <div style="text-align: left;">
+                            <div style="font-weight: 900; margin-bottom: 0.25rem;">Book a Room</div>
+                            <div style="opacity: 0.8; font-size: 0.875rem;">Reserve a space quickly</div>
+                        </div>
+                        <RadzenIcon Icon="add_circle" Style="font-size: 2rem;" />
+                    </div>
+                </RadzenButton>
+            </RadzenColumn>
 
-        <button class="action-card action-emerald" @onclick="NavigateToRooms">
-            <div class="action-content">
-                <h3>Manage Rooms</h3>
-                <p>Edit room details</p>
-            </div>
-            <svg class="action-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-            </svg>
-        </button>
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenButton Click="@NavigateToRooms" Style="@GetActionCardStyle("green")" Size="ButtonSize.Large">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <div style="text-align: left;">
+                            <div style="font-weight: 900; margin-bottom: 0.25rem;">Manage Rooms</div>
+                            <div style="opacity: 0.8; font-size: 0.875rem;">Edit room details & settings</div>
+                        </div>
+                        <RadzenIcon Icon="settings" Style="font-size: 2rem;" />
+                    </div>
+                </RadzenButton>
+            </RadzenColumn>
 
-        <button class="action-card action-purple" @onclick="NavigateToPeople">
-            <div class="action-content">
-                <h3>Manage People</h3>
-                <p>Students & Professors</p>
-            </div>
-            <svg class="action-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
-        </button>
-    </div>
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenButton Click="@NavigateToPeople" Style="@GetActionCardStyle("purple")" Size="ButtonSize.Large">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <div style="text-align: left;">
+                            <div style="font-weight: 900; margin-bottom: 0.25rem;">Manage People</div>
+                            <div style="opacity: 0.8; font-size: 0.875rem;">Students & Professors</div>
+                        </div>
+                        <RadzenIcon Icon="people" Style="font-size: 2rem;" />
+                    </div>
+                </RadzenButton>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenCard>
 </div>
-
-

@@ -1,26 +1,42 @@
-﻿using System.Net.Http.Json;
-using RoomManager.Shared.Entities;
+﻿using RoomManager.Shared.Common;
+using RoomManager.Shared.DTOs.UserDto;
 
-namespace RoomManagement.Frontend.Services;
-
-public class ProfessorService
+namespace RoomManagement.Frontend.Services
 {
-    private readonly HttpClient _http;
+    public class ProfessorService
+    {
+        private readonly HttpClient _http;
 
-    public ProfessorService(HttpClient http) => _http = http;
+        public ProfessorService(HttpClient http) => _http = http;
 
-    public async Task<List<Professor>> GetAllAsync() =>
-        await _http.GetFromJsonAsync<List<Professor>>("api/professor") ?? new();
+        public async Task<List<ProfessorDto>> GetAllAsync()
+        {
+            var response = await _http.GetFromJsonAsync<ServiceResponse<List<ProfessorDto>>>("api/professor");
+            return response?.Data ?? new List<ProfessorDto>();
+        }
 
-    public async Task<Professor?> GetByIdAsync(Guid id) =>
-        await _http.GetFromJsonAsync<Professor>($"api/professor/{id}");
+        public async Task<ProfessorDto?> GetByIdAsync(Guid id)
+        {
+            var response = await _http.GetFromJsonAsync<ServiceResponse<ProfessorDto>>($"api/professor/{id}");
+            return response?.Data;
+        }
 
-    public async Task AddAsync(Professor professor) =>
-        await _http.PostAsJsonAsync("api/professor", professor);
+        public async Task<bool> AddAsync(CreateProfessorRequest professor)
+        {
+            var response = await _http.PostAsJsonAsync("api/professor", professor);
+            return response.IsSuccessStatusCode;
+        }
 
-    public async Task UpdateAsync(Professor professor) =>
-        await _http.PutAsJsonAsync($"api/professor/{professor.Id}", professor);
+        public async Task<bool> UpdateAsync(Guid id, CreateProfessorRequest professor)
+        {
+            var response = await _http.PutAsJsonAsync($"api/professor/{id}", professor);
+            return response.IsSuccessStatusCode;
+        }
 
-    public async Task DeleteAsync(Guid id) =>
-        await _http.DeleteAsync($"api/professor/{id}");
+        public async Task<bool> DeleteAsync(Guid id)
+        {
+            var response = await _http.DeleteAsync($"api/professor/{id}");
+            return response.IsSuccessStatusCode;
+        }
+    }
 }

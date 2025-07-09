@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using RoomManager.Shared.Repositories;
 using RoomManager.RoomService.Repositories;
 
 namespace RoomManager.RoomService;

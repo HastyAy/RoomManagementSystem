@@ -1,0 +1,129 @@
+﻿@using RoomManager.Shared.DTOs
+@using Radzen
+@using Radzen.Blazor
+@using RoomManager.Shared.DTOs.BookingDto
+@inject DialogService DialogService
+
+<div style="padding: 1rem;">
+    <RadzenCard>
+        <RadzenStack Gap="1rem">
+            <!-- Booking Header -->
+            <div style="display: flex; align-items: center; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #e5e7eb;">
+                <RadzenIcon Icon="event" Style="font-size: 2.5rem; color: #3b82f6;" />
+                <div>
+                    <RadzenText TextStyle="TextStyle.H5" Text="@(Booking.RoomName ?? "Room Booking")" Style="margin: 0; color: #1f2937;" />
+                    <RadzenBadge BadgeStyle="@GetStatusBadgeStyle()" Text="@GetStatusText()" Style="margin-top: 0.25rem;" />
+                </div>
+            </div>
+
+            <!-- Booking Details Grid -->
+            <RadzenRow Gap="1rem">
+                <!-- Date and Time -->
+                <RadzenColumn Size="12">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <RadzenIcon Icon="schedule" Style="color: #6b7280;" />
+                        <div>
+                            <RadzenText TextStyle="TextStyle.Caption" Text="Date & Time" Style="color: #6b7280; margin: 0;" />
+                            <RadzenText TextStyle="TextStyle.Body1" Text="@GetDateTimeText()" Style="color: #1f2937; margin: 0; font-weight: 600;" />
+                        </div>
+                    </div>
+                </RadzenColumn>
+
+                <!-- Room Details -->
+                <RadzenColumn Size="6">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <RadzenIcon Icon="meeting_room" Style="color: #6b7280;" />
+                        <div>
+                            <RadzenText TextStyle="TextStyle.Caption" Text="Room" Style="color: #6b7280; margin: 0;" />
+                            <RadzenText TextStyle="TextStyle.Body1" Text="@(Booking.RoomName ?? "Unknown")" Style="color: #1f2937; margin: 0; font-weight: 600;" />
+                            @if (!string.IsNullOrEmpty(Booking.RoomLocation))
+                            {
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@Booking.RoomLocation" Style="color: #9ca3af; margin: 0;" />
+                            }
+                        </div>
+                    </div>
+                </RadzenColumn>
+
+                <!-- Duration -->
+                <RadzenColumn Size="6">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <RadzenIcon Icon="timer" Style="color: #6b7280;" />
+                        <div>
+                            <RadzenText TextStyle="TextStyle.Caption" Text="Duration" Style="color: #6b7280; margin: 0;" />
+                            <RadzenText TextStyle="TextStyle.Body1" Text="@GetDurationText()" Style="color: #1f2937; margin: 0; font-weight: 600;" />
+                        </div>
+                    </div>
+                </RadzenColumn>
+            </RadzenRow>
+
+            <!-- User Information -->
+            @if (!string.IsNullOrEmpty(Booking.StudentName) || !string.IsNullOrEmpty(Booking.ProfessorName))
+            {
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+                    <RadzenText TextStyle="TextStyle.Subtitle1" Text="Booked By" Style="color: #1f2937; margin: 0 0 0.5rem 0; font-weight: 600;" />
+
+                    @if (!string.IsNullOrEmpty(Booking.StudentName))
+                    {
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <RadzenIcon Icon="school" Style="color: #6b7280;" />
+                            <div>
+                                <RadzenText TextStyle="TextStyle.Body1" Text="@Booking.StudentName" Style="color: #1f2937; margin: 0; font-weight: 500;" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="Student" Style="color: #6b7280; margin: 0;" />
+                            </div>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Booking.ProfessorName))
+                    {
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <RadzenIcon Icon="person" Style="color: #6b7280;" />
+                            <div>
+                                <RadzenText TextStyle="TextStyle.Body1" Text="@Booking.ProfessorName" Style="color: #1f2937; margin: 0; font-weight: 500;" />
+                                <RadzenText TextStyle="TextStyle.Caption" Text="Professor" Style="color: #6b7280; margin: 0;" />
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+
+            <!-- Purpose -->
+            @if (!string.IsNullOrEmpty(Booking.Purpose))
+            {
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+                    <RadzenText TextStyle="TextStyle.Caption" Text="Purpose" Style="color: #6b7280; margin: 0 0 0.25rem 0;" />
+                    <RadzenText TextStyle="TextStyle.Body1" Text="@Booking.Purpose" Style="color: #1f2937; margin: 0; line-height: 1.5;" />
+                </div>
+            }
+
+            <!-- Status Information -->
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+                <RadzenRow Gap="1rem">
+                    <RadzenColumn Size="6">
+                        <RadzenText TextStyle="TextStyle.Caption" Text="Status" Style="color: #6b7280; margin: 0 0 0.25rem 0;" />
+                        <RadzenText TextStyle="TextStyle.Body1" Text="@GetStatusText()" Style="color: #1f2937; margin: 0; font-weight: 600;" />
+                    </RadzenColumn>
+                    <RadzenColumn Size="6">
+                        <RadzenText TextStyle="TextStyle.Caption" Text="Time Information" Style="color: #6b7280; margin: 0 0 0.25rem 0;" />
+                        <RadzenText TextStyle="TextStyle.Body1" Text="@GetTimeIndicator()" Style="color: #1f2937; margin: 0; font-weight: 600;" />
+                    </RadzenColumn>
+                </RadzenRow>
+            </div>
+
+            <!-- Booking ID (for admin/debugging) -->
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+                <RadzenText TextStyle="TextStyle.Caption" Text="Booking ID" Style="color: #6b7280; margin: 0 0 0.25rem 0;" />
+                <RadzenText TextStyle="TextStyle.Caption" Text="@Booking.Id.ToString()" Style="color: #9ca3af; margin: 0; font-family: monospace;" />
+            </div>
+        </RadzenStack>
+    </RadzenCard>
+
+    <!-- Dialog Actions -->
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem" Style="margin-top: 1.5rem;">
+        @if (IsBookingActive())
+        {
+            <RadzenButton Text="Check In" Click="@CheckIn" ButtonStyle="ButtonStyle.Success" />
+        }
+        <RadzenButton Text="Close" Click="@Close" ButtonStyle="ButtonStyle.Secondary" />
+    </RadzenStack>
+</div>
+

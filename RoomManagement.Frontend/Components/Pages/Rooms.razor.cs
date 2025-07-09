@@ -1,18 +1,21 @@
 using Microsoft.JSInterop;
 using Radzen;
+using RoomManagement.Frontend.Components.FormDialogs;
 using RoomManagement.Frontend.Services;
-using RoomManager.Shared.Entities;
+using RoomManager.Shared.DTOs.RoomDto;
 
 namespace RoomManagement.Frontend.Components.Pages
 {
     public partial class Rooms
     {
-        private List<Room> rooms = new();
-        private List<Room> filteredRooms = new();
-        private Room currentRoom = new();
+        private List<RoomDto> rooms = new();
+        private List<RoomDto> filteredRooms = new();
+        private CreateRoomRequest currentRoom = new();
+        private UpdateRoomRequest updateRoom = new();
 
         private bool loading = true;
         private bool isEditMode = false;
+        private Guid editingRoomId = Guid.Empty;
 
         private string searchTerm = "";
         private string selectedType = "";
@@ -20,23 +23,23 @@ namespace RoomManagement.Frontend.Components.Pages
 
         // Stats
         private int totalRooms = 0;
-        private int availableRooms = 0;
+        private int roomTypesCount = 0;
         private int totalCapacity = 0;
-        private int utilizationRate = 0;
+        private int averageCapacity = 0;
 
         // Dropdown options
-        private List<string> roomTypes = new()
-    {
-        "Conference", "Classroom", "Lab", "Study", "Meeting", "Auditorium"
-    };
+        private readonly List<string> roomTypes = new()
+        {
+            "Conference", "Classroom", "Lab", "Study", "Meeting", "Auditorium", "Office"
+        };
 
-        private List<dynamic> capacityOptions = new()
-    {
-        new { Text = "Small (1-10)", Value = "small" },
-        new { Text = "Medium (11-25)", Value = "medium" },
-        new { Text = "Large (26-50)", Value = "large" },
-        new { Text = "X-Large (50+)", Value = "xlarge" }
-    };
+        private readonly List<dynamic> capacityOptions = new()
+        {
+            new { Text = "Small (1-10)", Value = "small" },
+            new { Text = "Medium (11-25)", Value = "medium" },
+            new { Text = "Large (26-50)", Value = "large" },
+            new { Text = "X-Large (50+)", Value = "xlarge" }
+        };
 
         protected override async Task OnInitializedAsync()
         {
@@ -54,13 +57,7 @@ namespace RoomManagement.Frontend.Components.Pages
             }
             catch (Exception ex)
             {
-                NotificationService.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = "Loading Failed",
-                    Detail = $"Error loading rooms: {ex.Message}",
-                    Duration = 5000
-                });
+                ShowErrorNotification("Loading Failed", $"Error loading rooms: {ex.Message}");
             }
             finally
             {
@@ -70,11 +67,11 @@ namespace RoomManagement.Frontend.Components.Pages
 
         private void FilterRooms()
         {
-            filteredRooms = rooms.Where(r => MatchesFilters(r)).ToList();
+            filteredRooms = rooms.Where(MatchesFilters).ToList();
             StateHasChanged();
         }
 
-        private bool MatchesFilters(Room room)
+        private bool MatchesFilters(RoomDto room)
         {
             // Search filter
             if (!string.IsNullOrEmpty(searchTerm))
@@ -111,23 +108,23 @@ namespace RoomManagement.Frontend.Components.Pages
         private void CalculateStats()
         {
             totalRooms = rooms.Count;
-            availableRooms = rooms.Count; // Simplified - in real app, check booking status
+            roomTypesCount = rooms.Select(r => r.Type).Distinct().Count();
             totalCapacity = rooms.Sum(r => r.Capacity);
-            utilizationRate = totalRooms > 0 ? (int)Math.Round(((double)(totalRooms - availableRooms) / totalRooms) * 100) : 0;
+            averageCapacity = totalRooms > 0 ? (int)Math.Round((double)totalCapacity / totalRooms) : 0;
         }
 
         private async Task OpenCreateModal()
         {
-            currentRoom = new Room();
+            currentRoom = new CreateRoomRequest();
             isEditMode = false;
+            editingRoomId = Guid.Empty;
             await OpenRoomDialog();
         }
 
-        private async Task EditRoom(Room room)
+        private async Task EditRoom(RoomDto room)
         {
-            currentRoom = new Room
+            updateRoom = new UpdateRoomRequest
             {
-                Id = room.Id,
                 Name = room.Name,
                 Type = room.Type,
                 Capacity = room.Capacity,
@@ -135,18 +132,28 @@ namespace RoomManagement.Frontend.Components.Pages
                 Description = room.Description
             };
             isEditMode = true;
+            editingRoomId = room.Id;
             await OpenRoomDialog();
         }
 
         private async Task OpenRoomDialog()
         {
+            var parameters = new Dictionary<string, object>();
+
+            if (isEditMode)
+            {
+                parameters.Add("Room", updateRoom);
+                parameters.Add("IsEdit", true);
+            }
+            else
+            {
+                parameters.Add("Room", currentRoom);
+                parameters.Add("IsEdit", false);
+            }
+
             var result = await DialogService.OpenAsync<RoomFormDialog>(
                 isEditMode ? "Edit Room" : "Add New Room",
-                new Dictionary<string, object>()
-                    {
-                { "Room", currentRoom },
-                { "IsEdit", isEditMode }
-                    },
+                parameters,
                 new DialogOptions()
                 {
                     Width = "600px",
@@ -154,64 +161,62 @@ namespace RoomManagement.Frontend.Components.Pages
                     Resizable = true,
                     Draggable = true
                 });
-            var subrooms = result as Room;
-            if (result != null && result is Room submittedRoom)
+
+            if (result != null)
             {
-                await SaveRoom(subrooms);
+                await SaveRoom(result);
             }
         }
 
-        private async Task SaveRoom(Room room)
+        private async Task SaveRoom(object roomData)
         {
             try
             {
-                if (isEditMode)
-                {
-                    await RoomService.UpdateAsync(room);
-                    var index = rooms.FindIndex(r => r.Id == room.Id);
-                    if (index >= 0)
-                    {
-                        rooms[index] = room;
-                    }
+                bool success;
+                string roomName;
 
-                    NotificationService.Notify(new NotificationMessage
+                if (isEditMode && roomData is UpdateRoomRequest updateRequest)
+                {
+                    success = await RoomService.UpdateAsync(editingRoomId, updateRequest);
+                    roomName = updateRequest.Name;
+
+                    if (success)
                     {
-                        Severity = NotificationSeverity.Success,
-                        Summary = "Room Updated",
-                        Detail = $"Room '{room.Name}' updated successfully",
-                        Duration = 3000
-                    });
+                        ShowSuccessNotification("Room Updated", $"Room '{roomName}' updated successfully");
+                    }
+                }
+                else if (!isEditMode && roomData is CreateRoomRequest createRequest)
+                {
+                    success = await RoomService.AddAsync(createRequest);
+                    roomName = createRequest.Name;
+
+                    if (success)
+                    {
+                        ShowSuccessNotification("Room Created", $"Room '{roomName}' created successfully");
+                    }
                 }
                 else
                 {
-                    await RoomService.AddAsync(room);
-                    await LoadRooms(); // Reload to get the new room with ID
-
-                    NotificationService.Notify(new NotificationMessage
-                    {
-                        Severity = NotificationSeverity.Success,
-                        Summary = "Room Created",
-                        Detail = $"Room '{room.Name}' created successfully",
-                        Duration = 3000
-                    });
+                    ShowErrorNotification("Save Failed", "Invalid room data");
+                    return;
                 }
 
-                FilterRooms();
-                CalculateStats();
+                if (success)
+                {
+                    await LoadRooms(); // Reload to get fresh data
+                }
+                else
+                {
+                    ShowErrorNotification("Save Failed", "Failed to save room");
+                }
             }
             catch (Exception ex)
             {
-                NotificationService.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = "Save Failed",
-                    Detail = $"Error saving room: {ex.Message}",
-                    Duration = 5000
-                });
+                ShowErrorNotification("Save Failed", $"Error saving room: {ex.Message}");
             }
         }
 
-        private async Task DeleteRoom(Room room)
+        private async Task DeleteRoom(RoomDto room)
         {
             var confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
                 $"Are you sure you want to delete '{room.Name}'? This action cannot be undone.");
@@ -220,31 +225,58 @@ namespace RoomManagement.Frontend.Components.Pages
 
             try
             {
-                await RoomService.DeleteAsync(room.Id);
-                rooms.RemoveAll(r => r.Id == room.Id);
-                FilterRooms();
-                CalculateStats();
+                var success = await RoomService.DeleteAsync(room.Id);
 
-                NotificationService.Notify(new NotificationMessage
+                if (success)
                 {
-                    Severity = NotificationSeverity.Success,
-                    Summary = "Room Deleted",
-                    Detail = $"Room '{room.Name}' deleted successfully",
-                    Duration = 3000
-                });
+                    await LoadRooms(); // Reload to get fresh data
+                    ShowSuccessNotification("Room Deleted", $"Room '{room.Name}' deleted successfully");
+                }
+                else
+                {
+                    ShowErrorNotification("Delete Failed", "Failed to delete room");
+                }
             }
             catch (Exception ex)
             {
-                NotificationService.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = "Delete Failed",
-                    Detail = $"Error deleting room: {ex.Message}",
-                    Duration = 5000
-                });
+                ShowErrorNotification("Delete Failed", $"Error deleting room: {ex.Message}");
             }
         }
 
-  
+        private async Task ViewRoomDetails(RoomDto room)
+        {
+            await DialogService.OpenAsync<RoomDetailsDialog>(
+                $"Room Details - {room.Name}",
+                new Dictionary<string, object> { { "Room", room } },
+                new DialogOptions()
+                {
+                    Width = "500px",
+                    Height = "400px",
+                    Resizable = true,
+                    Draggable = true
+                });
+        }
+
+        private void ShowSuccessNotification(string summary, string detail)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = summary,
+                Detail = detail,
+                Duration = 3000
+            });
+        }
+
+        private void ShowErrorNotification(string summary, string detail)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = summary,
+                Detail = detail,
+                Duration = 5000
+            });
+        }
     }
 }

@@ -23,6 +23,7 @@
     <ProjectReference Include="..\RoomManager.BookingService\RoomManager.BookingService.csproj" />
     <ProjectReference Include="..\RoomManager.RoomService\RoomManager.RoomService.csproj" />
     <ProjectReference Include="..\RoomManager.Shared\RoomManager.Shared.csproj" />
+    <ProjectReference Include="..\RoomManager.UserService\RoomManager.UserService.csproj" />
   </ItemGroup>
 
   <ItemGroup>

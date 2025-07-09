@@ -2,8 +2,6 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using RoomManager.BookingService.Context;
 
 #nullable disable
@@ -22,23 +20,49 @@ namespace RoomManager.BookingService.Migrations
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
 
-            modelBuilder.Entity("RoomManager.Shared.Entities.Booking", b =>
+            modelBuilder.Entity("RoomManager.BookingService.Entities.Booking", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<DateTime>("EndTime")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("ProfessorDepartment")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
 
                     b.Property<Guid?>("ProfessorId")
                         .HasColumnType("char(36)");
 
+                    b.Property<string>("ProfessorName")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
                     b.Property<string>("Purpose")
-                        .HasColumnType("longtext");
+                        .HasMaxLength(500)
+                        .HasColumnType("varchar(500)");
+
+                    b.Property<int?>("RoomCapacity")
+                        .HasColumnType("int");
 
                     b.Property<Guid>("RoomId")
                         .HasColumnType("char(36)");
+
+                    b.Property<string>("RoomLocation")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)");
+
+                    b.Property<string>("RoomName")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
 
                     b.Property<DateTime>("StartTime")
                         .HasColumnType("datetime(6)");
@@ -46,116 +70,36 @@ namespace RoomManager.BookingService.Migrations
                     b.Property<Guid?>("StudentId")
                         .HasColumnType("char(36)");
 
+                    b.Property<string>("StudentMatriNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<string>("StudentName")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("EndTime");
+
+                    b.HasIndex("IsActive");
 
                     b.HasIndex("ProfessorId");
 
                     b.HasIndex("RoomId");
 
+                    b.HasIndex("StartTime");
+
                     b.HasIndex("StudentId");
 
+                    b.HasIndex("RoomId", "IsActive");
+
+                    b.HasIndex("RoomId", "StartTime", "EndTime");
+
                     b.ToTable("Bookings");
-                });
-
-            modelBuilder.Entity("RoomManager.Shared.Entities.Professor", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Professors");
-                });
-
-            modelBuilder.Entity("RoomManager.Shared.Entities.Room", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<int>("Capacity")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Location")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Rooms");
-                });
-
-            modelBuilder.Entity("RoomManager.Shared.Entities.Student", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("MatriNumber")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Students");
-                });
-
-            modelBuilder.Entity("RoomManager.Shared.Entities.Booking", b =>
-                {
-                    b.HasOne("RoomManager.Shared.Entities.Professor", "Professor")
-                        .WithMany()
-                        .HasForeignKey("ProfessorId");
-
-                    b.HasOne("RoomManager.Shared.Entities.Room", "Room")
-                        .WithMany()
-                        .HasForeignKey("RoomId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("RoomManager.Shared.Entities.Student", "Student")
-                        .WithMany()
-                        .HasForeignKey("StudentId");
-
-                    b.Navigation("Professor");
-
-                    b.Navigation("Room");
-
-                    b.Navigation("Student");
                 });
 #pragma warning restore 612, 618
         }

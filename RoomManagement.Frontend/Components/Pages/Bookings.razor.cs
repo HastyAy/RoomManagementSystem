@@ -1,33 +1,32 @@
 using Microsoft.JSInterop;
 using Radzen;
+using RoomManagement.Frontend.Components.FormDialogs;
 using RoomManagement.Frontend.Services;
-using RoomManager.Shared.Entities;
+using RoomManager.Shared.DTOs;
+using RoomManager.Shared.DTOs.BookingDto;
+using RoomManager.Shared.DTOs.RoomDto;
+using RoomManager.Shared.DTOs.UserDto;
 
 namespace RoomManagement.Frontend.Components.Pages
 {
     public partial class Bookings
     {
         // Data collections
-        private List<Booking> bookings = new();
-        private List<Booking> filteredBookings = new();
-        private List<Room> rooms = new();
-        private List<Student> students = new();
-        private List<Professor> professors = new();
+        private List<BookingDto> bookings = new();
+        private List<BookingDto> filteredBookings = new();
+        private List<RoomDto> rooms = new();
+        private List<StudentDto> students = new();
+        private List<ProfessorDto> professors = new();
 
         // Current booking being created/edited
-        private Booking currentBooking = new();
+        private CreateBookingRequest currentCreateBooking = new();
+        private UpdateBookingRequest currentUpdateBooking = new();
+        private Guid editingBookingId = Guid.Empty;
         private bool isStudentBooking = true;
-
-        // Form helpers
-        private string startDateString = DateTime.Today.ToString("yyyy-MM-dd");
-        private string startTimeString = "09:00";
-        private string endTimeString = "10:00";
 
         // UI state
         private bool loading = true;
-        private bool showModal = false;
         private bool isEditMode = false;
-        private bool isSaving = false;
 
         // Filter state
         private string searchTerm = "";
@@ -40,6 +39,21 @@ namespace RoomManagement.Frontend.Components.Pages
         private int upcomingBookings = 0;
         private int roomsInUse = 0;
 
+        // Dropdown options
+        private readonly List<dynamic> statusOptions = new()
+        {
+            new { Text = "Active", Value = "active" },
+            new { Text = "Upcoming", Value = "upcoming" },
+            new { Text = "Completed", Value = "completed" }
+        };
+
+        private readonly List<dynamic> dateOptions = new()
+        {
+            new { Text = "Today", Value = "today" },
+            new { Text = "This Week", Value = "week" },
+            new { Text = "This Month", Value = "month" }
+        };
+
         protected override async Task OnInitializedAsync()
         {
             await LoadData();
@@ -50,17 +64,19 @@ namespace RoomManagement.Frontend.Components.Pages
             loading = true;
             try
             {
-                await LoadBookings();
-                await LoadRooms();
-                await LoadStudents();
-                await LoadProfessors();
+                await Task.WhenAll(
+                    LoadBookings(),
+                    LoadRooms(),
+                    LoadStudents(),
+                    LoadProfessors()
+                );
 
                 FilterBookings();
                 CalculateStats();
             }
             catch (Exception ex)
             {
-                await JSRuntime.InvokeVoidAsync("console.error", $"Error loading data: {ex.Message}");
+                ShowErrorNotification("Loading Failed", $"Error loading data: {ex.Message}");
             }
             finally
             {
@@ -94,15 +110,15 @@ namespace RoomManagement.Frontend.Components.Pages
             StateHasChanged();
         }
 
-        private bool MatchesFilters(Booking booking)
+        private bool MatchesFilters(BookingDto booking)
         {
             // Search filter
             if (!string.IsNullOrEmpty(searchTerm))
             {
                 var search = searchTerm.ToLower();
-                var roomName = GetRoomName(booking.RoomId).ToLower();
-                var studentName = booking.StudentId != null ? GetStudentName(booking.StudentId.Value).ToLower() : "";
-                var professorName = booking.ProfessorId != null ? GetProfessorName(booking.ProfessorId.Value).ToLower() : "";
+                var roomName = booking.RoomName?.ToLower() ?? "";
+                var studentName = booking.StudentName?.ToLower() ?? "";
+                var professorName = booking.ProfessorName?.ToLower() ?? "";
                 var purpose = booking.Purpose?.ToLower() ?? "";
 
                 if (!roomName.Contains(search) &&
@@ -150,22 +166,23 @@ namespace RoomManagement.Frontend.Components.Pages
         }
 
         // Modal handling
-        private void OpenCreateModal()
+        private async Task OpenCreateModal()
         {
-            currentBooking = new Booking();
-            startDateString = DateTime.Today.ToString("yyyy-MM-dd");
-            startTimeString = "09:00";
-            endTimeString = "10:00";
+            currentCreateBooking = new CreateBookingRequest
+            {
+                StartTime = DateTime.Today.AddHours(9),
+                EndTime = DateTime.Today.AddHours(10)
+            };
             isStudentBooking = true;
             isEditMode = false;
-            showModal = true;
+            editingBookingId = Guid.Empty;
+            await OpenBookingDialog();
         }
 
-        private void EditBooking(Booking booking)
+        private async Task EditBooking(BookingDto booking)
         {
-            currentBooking = new Booking
+            currentUpdateBooking = new UpdateBookingRequest
             {
-                Id = booking.Id,
                 RoomId = booking.RoomId,
                 StudentId = booking.StudentId,
                 ProfessorId = booking.ProfessorId,
@@ -175,137 +192,141 @@ namespace RoomManagement.Frontend.Components.Pages
             };
 
             isStudentBooking = booking.StudentId != null;
-            startDateString = booking.StartTime.ToString("yyyy-MM-dd");
-            startTimeString = booking.StartTime.ToString("HH:mm");
-            endTimeString = booking.EndTime.ToString("HH:mm");
             isEditMode = true;
-            showModal = true;
+            editingBookingId = booking.Id;
+            await OpenBookingDialog();
         }
 
-        private void CloseModal()
+        private async Task OpenBookingDialog()
         {
-            showModal = false;
-            currentBooking = new Booking();
-            isEditMode = false;
-            isSaving = false;
-            isStudentBooking = true;
+            var parameters = new Dictionary<string, object>
+            {
+                { "Rooms", rooms },
+                { "Students", students },
+                { "Professors", professors },
+                { "IsEdit", isEditMode }
+            };
+
+            if (isEditMode)
+            {
+                parameters.Add("Booking", currentUpdateBooking);
+            }
+            else
+            {
+                parameters.Add("Booking", currentCreateBooking);
+            }
+
+            var result = await DialogService.OpenAsync<BookingFormDialog>(
+                isEditMode ? "Edit Booking" : "Create New Booking",
+                parameters,
+                new DialogOptions()
+                {
+                    Width = "700px",
+                    Height = "600px",
+                    Resizable = true,
+                    Draggable = true
+                });
+
+            if (result != null)
+            {
+                await SaveBooking(result);
+            }
         }
 
-        private void SetStudentBooking()
+        private async Task SaveBooking(object bookingData)
         {
-            isStudentBooking = true;
-            currentBooking.ProfessorId = null;
-            StateHasChanged();
-        }
-
-        private void SetProfessorBooking()
-        {
-            isStudentBooking = false;
-            currentBooking.StudentId = null;
-            StateHasChanged();
-        }
-
-        private bool IsFormValid()
-        {
-            if (currentBooking.RoomId == Guid.Empty) return false;
-            if (isStudentBooking && currentBooking.StudentId == null) return false;
-            if (!isStudentBooking && currentBooking.ProfessorId == null) return false;
-            if (string.IsNullOrEmpty(startDateString) || string.IsNullOrEmpty(startTimeString) || string.IsNullOrEmpty(endTimeString)) return false;
-
-            if (!DateTime.TryParse($"{startDateString} {startTimeString}", out var start)) return false;
-            if (!DateTime.TryParse($"{startDateString} {endTimeString}", out var end)) return false;
-            if (end <= start) return false;
-
-            return true;
-        }
-
-        private async Task SaveBooking()
-        {
-            if (!IsFormValid()) return;
-
-            isSaving = true;
             try
             {
-                var start = DateTime.Parse($"{startDateString} {startTimeString}");
-                var end = DateTime.Parse($"{startDateString} {endTimeString}");
+                bool success;
+                string operation;
 
-                currentBooking.StartTime = start;
-                currentBooking.EndTime = end;
-
-                if (isEditMode)
+                if (isEditMode && bookingData is UpdateBookingRequest updateRequest)
                 {
-                    await BookingService.UpdateAsync(currentBooking);
-                    var index = bookings.FindIndex(b => b.Id == currentBooking.Id);
-                    if (index >= 0)
-                    {
-                        bookings[index] = currentBooking;
-                    }
+                    success = await BookingService.UpdateAsync(editingBookingId, updateRequest);
+                    operation = "updated";
+                }
+                else if (!isEditMode && bookingData is CreateBookingRequest createRequest)
+                {
+                    success = await BookingService.AddAsync(createRequest);
+                    operation = "created";
                 }
                 else
                 {
-                    await BookingService.AddAsync(currentBooking);
-                    await LoadBookings();
+                    ShowErrorNotification("Save Failed", "Invalid booking data");
+                    return;
                 }
 
-                FilterBookings();
-                CalculateStats();
-                CloseModal();
+                if (success)
+                {
+                    await LoadBookings(); // Reload to get fresh data
+                    FilterBookings();
+                    CalculateStats();
+                    ShowSuccessNotification("Booking Saved", $"Booking {operation} successfully");
+                }
+                else
+                {
+                    ShowErrorNotification("Save Failed", $"Failed to {operation.TrimEnd('d')} booking");
+                }
             }
             catch (Exception ex)
             {
-                await JSRuntime.InvokeVoidAsync("console.error", $"Error saving booking: {ex.Message}");
-            }
-            finally
-            {
-                isSaving = false;
+                ShowErrorNotification("Save Failed", $"Error saving booking: {ex.Message}");
             }
         }
 
-        private async Task DeleteBooking(Booking booking)
+        private async Task DeleteBooking(BookingDto booking)
         {
+            var roomName = booking.RoomName ?? "Unknown Room";
             var confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
-                $"Are you sure you want to delete this booking for {GetRoomName(booking.RoomId)}?");
+                $"Are you sure you want to delete the booking for {roomName}? This action cannot be undone.");
 
             if (!confirmed) return;
 
             try
             {
-                await BookingService.DeleteAsync(booking.Id);
-                bookings.RemoveAll(b => b.Id == booking.Id);
-                FilterBookings();
-                CalculateStats();
+                var success = await BookingService.DeleteAsync(booking.Id);
+
+                if (success)
+                {
+                    await LoadBookings(); // Reload to get fresh data
+                    FilterBookings();
+                    CalculateStats();
+                    ShowSuccessNotification("Booking Deleted", $"Booking for {roomName} deleted successfully");
+                }
+                else
+                {
+                    ShowErrorNotification("Delete Failed", "Failed to delete booking");
+                }
             }
             catch (Exception ex)
             {
-                await JSRuntime.InvokeVoidAsync("console.error", $"Error deleting booking: {ex.Message}");
+                ShowErrorNotification("Delete Failed", $"Error deleting booking: {ex.Message}");
             }
         }
 
-        private async Task CheckIn(Booking booking)
+        private async Task ViewBookingDetails(BookingDto booking)
         {
-            await JSRuntime.InvokeVoidAsync("alert", $"Check-in functionality for {GetRoomName(booking.RoomId)} - Coming soon!");
+            await DialogService.OpenAsync<BookingDetailsDialog>(
+                $"Booking Details - {booking.RoomName}",
+                new Dictionary<string, object> { { "Booking", booking } },
+                new DialogOptions()
+                {
+                    Width = "600px",
+                    Height = "500px",
+                    Resizable = true,
+                    Draggable = true
+                });
+        }
+
+        private async Task CheckIn(BookingDto booking)
+        {
+            // In a real app, this would call an API to check in
+            ShowSuccessNotification("Check In", $"Checked in to {booking.RoomName ?? "room"}");
+            await Task.CompletedTask; // Placeholder for actual check-in logic
         }
 
         // Helper methods
-        private string GetRoomName(Guid roomId)
-        {
-            var room = rooms.FirstOrDefault(r => r.Id == roomId);
-            return room?.Name ?? "Unknown Room";
-        }
-
-        private string GetStudentName(Guid studentId)
-        {
-            var student = students.FirstOrDefault(s => s.Id == studentId);
-            return student?.LastName ?? "Unknown Student";
-        }
-
-        private string GetProfessorName(Guid professorId)
-        {
-            var professor = professors.FirstOrDefault(p => p.Id == professorId);
-            return professor?.LastName ?? "Unknown Professor";
-        }
-
-        private string GetBookingStatus(Booking booking)
+        private string GetBookingStatus(BookingDto booking)
         {
             var now = DateTime.Now;
             if (booking.EndTime < now) return "completed";
@@ -313,44 +334,85 @@ namespace RoomManagement.Frontend.Components.Pages
             return "upcoming";
         }
 
-        private string GetBookingStatusClass(Booking booking)
+        private string GetBookingStatusText(BookingDto booking)
         {
             return GetBookingStatus(booking) switch
             {
-                "active" => "booking-active",
-                "completed" => "booking-completed",
-                _ => "booking-upcoming"
+                "active" => "Active",
+                "completed" => "Completed",
+                _ => "Upcoming"
             };
         }
 
-        private string GetStatusBadgeClass(Booking booking)
+        private BadgeStyle GetStatusBadgeStyle(BookingDto booking)
         {
             return GetBookingStatus(booking) switch
             {
-                "active" => "status-active",
-                "completed" => "status-completed",
-                _ => "status-upcoming"
+                "active" => BadgeStyle.Success,
+                "completed" => BadgeStyle.Secondary,
+                _ => BadgeStyle.Info
             };
         }
 
-        private bool IsBookingActive(Booking booking)
+        private string GetStatusColor(BookingDto booking)
+        {
+            return GetBookingStatus(booking) switch
+            {
+                "active" => "#10b981",
+                "completed" => "#6b7280",
+                _ => "#3b82f6"
+            };
+        }
+
+        private bool IsBookingActive(BookingDto booking)
         {
             var now = DateTime.Now;
             return booking.StartTime <= now && booking.EndTime > now;
         }
 
-        private string GetTimeIndicator(Booking booking)
+        private string GetTimeIndicator(BookingDto booking)
         {
             var now = DateTime.Now;
             var status = GetBookingStatus(booking);
 
             return status switch
             {
-                "active" => $"Ends in {Math.Max(0, (int)(booking.EndTime - now).TotalHours)}h {Math.Max(0, (booking.EndTime - now).Minutes)}m",
-                "upcoming" => $"Starts in {Math.Max(0, (int)(booking.StartTime - now).TotalHours)}h {Math.Max(0, (booking.StartTime - now).Minutes)}m",
+                "active" => $"Ends in {GetDurationText(booking.EndTime - now)}",
+                "upcoming" => $"Starts in {GetDurationText(booking.StartTime - now)}",
                 "completed" => "Completed",
                 _ => ""
             };
+        }
+
+        private string GetDurationText(TimeSpan duration)
+        {
+            if (duration.TotalDays >= 1)
+                return $"{(int)duration.TotalDays}d {duration.Hours}h";
+            if (duration.TotalHours >= 1)
+                return $"{(int)duration.TotalHours}h {duration.Minutes}m";
+            return $"{Math.Max(0, duration.Minutes)}m";
+        }
+
+        private void ShowSuccessNotification(string summary, string detail)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = summary,
+                Detail = detail,
+                Duration = 3000
+            });
+        }
+
+        private void ShowErrorNotification(string summary, string detail)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = summary,
+                Detail = detail,
+                Duration = 5000
+            });
         }
     }
 }

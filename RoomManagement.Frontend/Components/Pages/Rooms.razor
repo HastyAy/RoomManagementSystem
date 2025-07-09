@@ -1,6 +1,6 @@
 ﻿@page "/rooms"
 @using RoomManagement.Frontend.Services
-@using RoomManager.Shared.Entities
+@using RoomManager.Shared.DTOs
 @using Radzen
 @using Radzen.Blazor
 @inject RoomService RoomService
@@ -18,10 +18,10 @@
                 <div class="header-info">
                     <RadzenText TextStyle="TextStyle.H3" Text="Room Management" Style="margin: 0; font-weight: 900;" />
                     <RadzenText TextStyle="TextStyle.Body1" Text="Manage all rooms, capacities, and availability"
-                    Style="color: #6b7280; margin: 0.5rem 0 0 0;" />
+                                Style="color: #6b7280; margin: 0.5rem 0 0 0;" />
                 </div>
                 <RadzenButton Click="@OpenCreateModal" Icon="add" Text="Add New Room"
-                ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Medium" />
+                              ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Medium" />
             </div>
         </RadzenCard>
     </div>
@@ -33,21 +33,21 @@
                 <RadzenColumn Size="12" SizeMD="6">
                     <RadzenLabel Text="Search Rooms" Style="font-weight: 600; margin-bottom: 0.5rem;" />
                     <RadzenTextBox @bind-Value="@searchTerm" @bind-Value:after="FilterRooms"
-                    Placeholder="Search by name, type, or location..."
-                    Style="width: 100%;" />
+                                   Placeholder="Search by name, type, or location..."
+                                   Style="width: 100%;" />
                 </RadzenColumn>
                 <RadzenColumn Size="6" SizeMD="3">
                     <RadzenLabel Text="Room Type" Style="font-weight: 600; margin-bottom: 0.5rem;" />
                     <RadzenDropDown @bind-Value="@selectedType" @bind-Value:after="FilterRooms"
-                    Data="@roomTypes" Placeholder="All Types" AllowClear="true"
-                    Style="width: 100%;" />
+                                    Data="@roomTypes" Placeholder="All Types" AllowClear="true"
+                                    Style="width: 100%;" />
                 </RadzenColumn>
                 <RadzenColumn Size="6" SizeMD="3">
                     <RadzenLabel Text="Capacity" Style="font-weight: 600; margin-bottom: 0.5rem;" />
                     <RadzenDropDown @bind-Value="@selectedCapacity" @bind-Value:after="FilterRooms"
-                    Data="@capacityOptions" TextProperty="Text" ValueProperty="Value"
-                    Placeholder="All Capacities" AllowClear="true"
-                    Style="width: 100%;" />
+                                    Data="@capacityOptions" TextProperty="Text" ValueProperty="Value"
+                                    Placeholder="All Capacities" AllowClear="true"
+                                    Style="width: 100%;" />
                 </RadzenColumn>
             </RadzenRow>
         </RadzenCard>
@@ -65,9 +65,9 @@
             </RadzenColumn>
             <RadzenColumn Size="6" SizeMD="3">
                 <RadzenCard Style="padding: 1.5rem; text-align: center; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);">
-                    <RadzenIcon Icon="check_circle" Style="font-size: 2rem; color: #059669; margin-bottom: 0.5rem;" />
-                    <RadzenText TextStyle="TextStyle.H4" Text="@availableRooms.ToString()" Style="margin: 0; color: #1f2937;" />
-                    <RadzenText TextStyle="TextStyle.Caption" Text="Available Now" Style="color: #6b7280;" />
+                    <RadzenIcon Icon="meeting_room" Style="font-size: 2rem; color: #059669; margin-bottom: 0.5rem;" />
+                    <RadzenText TextStyle="TextStyle.H4" Text="@roomTypesCount.ToString()" Style="margin: 0; color: #1f2937;" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="Room Types" Style="color: #6b7280;" />
                 </RadzenCard>
             </RadzenColumn>
             <RadzenColumn Size="6" SizeMD="3">
@@ -79,9 +79,9 @@
             </RadzenColumn>
             <RadzenColumn Size="6" SizeMD="3">
                 <RadzenCard Style="padding: 1.5rem; text-align: center; background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);">
-                    <RadzenIcon Icon="trending_up" Style="font-size: 2rem; color: #ea580c; margin-bottom: 0.5rem;" />
-                    <RadzenText TextStyle="TextStyle.H4" Text="@($"{utilizationRate}%")" Style="margin: 0; color: #1f2937;" />
-                    <RadzenText TextStyle="TextStyle.Caption" Text="Utilization" Style="color: #6b7280;" />
+                    <RadzenIcon Icon="insights" Style="font-size: 2rem; color: #ea580c; margin-bottom: 0.5rem;" />
+                    <RadzenText TextStyle="TextStyle.H4" Text="@($"{averageCapacity}")" Style="margin: 0; color: #1f2937;" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="Avg Capacity" Style="color: #6b7280;" />
                 </RadzenCard>
             </RadzenColumn>
         </RadzenRow>
@@ -109,9 +109,9 @@
             <RadzenIcon Icon="location_off" Style="font-size: 4rem; color: #9ca3af; margin-bottom: 1rem;" />
             <RadzenText TextStyle="TextStyle.H5" Text="No rooms found" Style="color: #1f2937; margin-bottom: 0.5rem;" />
             <RadzenText TextStyle="TextStyle.Body1" Text="@(string.IsNullOrEmpty(searchTerm) ? "Get started by adding your first room." : "Try adjusting your search or filters.")"
-            Style="color: #6b7280; margin-bottom: 1.5rem;" />
+                        Style="color: #6b7280; margin-bottom: 1.5rem;" />
             <RadzenButton Click="@OpenCreateModal" Icon="add" Text="Add New Room"
-            ButtonStyle="ButtonStyle.Primary" />
+                          ButtonStyle="ButtonStyle.Primary" />
         </RadzenCard>
     }
     else
@@ -130,9 +130,9 @@
                             </div>
                             <div style="display: flex; gap: 0.5rem;">
                                 <RadzenButton Click="@(() => EditRoom(room))" Icon="edit" ButtonStyle="ButtonStyle.Light"
-                                Variant="Variant.Flat" Size="ButtonSize.Small" />
+                                              Variant="Variant.Flat" Size="ButtonSize.Small" />
                                 <RadzenButton Click="@(() => DeleteRoom(room))" Icon="delete" ButtonStyle="ButtonStyle.Danger"
-                                Variant="Variant.Flat" Size="ButtonSize.Small" />
+                                              Variant="Variant.Flat" Size="ButtonSize.Small" />
                             </div>
                         </div>
 
@@ -159,12 +159,15 @@
                             }
                         </div>
 
-                        <!-- Room Status and Actions -->
-                  
+                        <!-- Room Actions -->
+                        <div style="border-top: 1px solid #e5e7eb; padding-top: 1rem;">
+                            <RadzenButton Click="@(() => ViewRoomDetails(room))" Icon="visibility" Text="View Details"
+                                          ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Size="ButtonSize.Small"
+                                          Style="width: 100%;" />
+                        </div>
                     </RadzenCard>
                 </RadzenColumn>
             }
         </RadzenRow>
     }
 </div>
-

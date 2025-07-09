@@ -1,10 +1,14 @@
 ﻿@page "/bookings"
 @using RoomManagement.Frontend.Services
-@using RoomManager.Shared.Entities
+@using RoomManager.Shared.DTOs
+@using Radzen
+@using Radzen.Blazor
 @inject BookingService BookingService
 @inject RoomService RoomService
 @inject ProfessorService ProfessorService
 @inject StudentService StudentService
+@inject NotificationService NotificationService
+@inject DialogService DialogService
 @inject IJSRuntime JSRuntime
 
 <PageTitle>Booking Management</PageTitle>
@@ -12,345 +16,178 @@
 <div class="bookings-container">
     <!-- Header Section -->
     <div class="header-section">
-        <div class="header-content">
-            <div class="header-info">
-                <h1 class="page-title">Booking Management</h1>
-                <p class="page-subtitle">Schedule and manage room reservations</p>
+        <RadzenCard>
+            <div class="header-content">
+                <div class="header-info">
+                    <RadzenText TextStyle="TextStyle.H3" Text="Booking Management" Style="margin: 0; font-weight: 900;" />
+                    <RadzenText TextStyle="TextStyle.Body1" Text="Schedule and manage room reservations"
+                                Style="color: #6b7280; margin: 0.5rem 0 0 0;" />
+                </div>
+                <RadzenButton Click="@OpenCreateModal" Icon="add" Text="New Booking"
+                              ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Medium" />
             </div>
-            <button class="btn-primary" @onclick="OpenCreateModal">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                New Booking
-            </button>
-        </div>
+        </RadzenCard>
+    </div>
 
-        <!-- Search and Filter Bar -->
-        <div class="controls-bar">
-            <div class="search-container">
-                <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <path d="m21 21-4.35-4.35"></path>
-                </svg>
-                <input type="text" @bind="searchTerm" @bind:after="FilterBookings"
-                       placeholder="Search bookings..." class="search-input" />
-            </div>
-
-            <div class="filter-container">
-                <select @bind="selectedStatusFilter" @bind:after="FilterBookings" class="filter-select">
-                    <option value="">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="upcoming">Upcoming</option>
-                    <option value="completed">Completed</option>
-                </select>
-
-                <select @bind="selectedDateFilter" @bind:after="FilterBookings" class="filter-select">
-                    <option value="">All Time</option>
-                    <option value="today">Today</option>
-                    <option value="week">This Week</option>
-                    <option value="month">This Month</option>
-                </select>
-            </div>
-        </div>
+    <!-- Search and Filter Bar -->
+    <div class="controls-section" style="margin-bottom: 2rem;">
+        <RadzenCard Style="padding: 1rem;">
+            <RadzenRow Gap="1rem" AlignItems="AlignItems.Center">
+                <RadzenColumn Size="12" SizeMD="6">
+                    <RadzenLabel Text="Search Bookings" Style="font-weight: 600; margin-bottom: 0.5rem;" />
+                    <RadzenTextBox @bind-Value="@searchTerm" @bind-Value:after="FilterBookings"
+                                   Placeholder="Search by room, user, or purpose..."
+                                   Style="width: 100%;" />
+                </RadzenColumn>
+                <RadzenColumn Size="6" SizeMD="3">
+                    <RadzenLabel Text="Status" Style="font-weight: 600; margin-bottom: 0.5rem;" />
+                    <RadzenDropDown @bind-Value="@selectedStatusFilter" @bind-Value:after="FilterBookings"
+                                    Data="@statusOptions" TextProperty="Text" ValueProperty="Value"
+                                    Placeholder="All Status" AllowClear="true"
+                                    Style="width: 100%;" />
+                </RadzenColumn>
+                <RadzenColumn Size="6" SizeMD="3">
+                    <RadzenLabel Text="Time Period" Style="font-weight: 600; margin-bottom: 0.5rem;" />
+                    <RadzenDropDown @bind-Value="@selectedDateFilter" @bind-Value:after="FilterBookings"
+                                    Data="@dateOptions" TextProperty="Text" ValueProperty="Value"
+                                    Placeholder="All Time" AllowClear="true"
+                                    Style="width: 100%;" />
+                </RadzenColumn>
+            </RadzenRow>
+        </RadzenCard>
     </div>
 
     <!-- Stats Cards -->
-    <div class="stats-overview">
-        <div class="stat-card stat-blue">
-            <div class="stat-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                </svg>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-number">@totalBookings</h3>
-                <p class="stat-label">Total Bookings</p>
-            </div>
-        </div>
-
-        <div class="stat-card stat-green">
-            <div class="stat-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                </svg>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-number">@activeBookings</h3>
-                <p class="stat-label">Active Now</p>
-            </div>
-        </div>
-
-        <div class="stat-card stat-purple">
-            <div class="stat-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-number">@upcomingBookings</h3>
-                <p class="stat-label">Upcoming</p>
-            </div>
-        </div>
-
-        <div class="stat-card stat-orange">
-            <div class="stat-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                    <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-            </div>
-            <div class="stat-content">
-                <h3 class="stat-number">@roomsInUse</h3>
-                <p class="stat-label">Rooms In Use</p>
-            </div>
-        </div>
+    <div class="stats-section" style="margin-bottom: 2rem;">
+        <RadzenRow Gap="1.5rem">
+            <RadzenColumn Size="6" SizeMD="3">
+                <RadzenCard Style="padding: 1.5rem; text-align: center; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);">
+                    <RadzenIcon Icon="event" Style="font-size: 2rem; color: #2563eb; margin-bottom: 0.5rem;" />
+                    <RadzenText TextStyle="TextStyle.H4" Text="@totalBookings.ToString()" Style="margin: 0; color: #1f2937;" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="Total Bookings" Style="color: #6b7280;" />
+                </RadzenCard>
+            </RadzenColumn>
+            <RadzenColumn Size="6" SizeMD="3">
+                <RadzenCard Style="padding: 1.5rem; text-align: center; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);">
+                    <RadzenIcon Icon="play_circle" Style="font-size: 2rem; color: #059669; margin-bottom: 0.5rem;" />
+                    <RadzenText TextStyle="TextStyle.H4" Text="@activeBookings.ToString()" Style="margin: 0; color: #1f2937;" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="Active Now" Style="color: #6b7280;" />
+                </RadzenCard>
+            </RadzenColumn>
+            <RadzenColumn Size="6" SizeMD="3">
+                <RadzenCard Style="padding: 1.5rem; text-align: center; background: linear-gradient(135deg, #e9d5ff 0%, #ddd6fe 100%);">
+                    <RadzenIcon Icon="schedule" Style="font-size: 2rem; color: #7c3aed; margin-bottom: 0.5rem;" />
+                    <RadzenText TextStyle="TextStyle.H4" Text="@upcomingBookings.ToString()" Style="margin: 0; color: #1f2937;" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="Upcoming" Style="color: #6b7280;" />
+                </RadzenCard>
+            </RadzenColumn>
+            <RadzenColumn Size="6" SizeMD="3">
+                <RadzenCard Style="padding: 1.5rem; text-align: center; background: linear-gradient(135deg, #fed7aa 0%, #fdba74 100%);">
+                    <RadzenIcon Icon="meeting_room" Style="font-size: 2rem; color: #ea580c; margin-bottom: 0.5rem;" />
+                    <RadzenText TextStyle="TextStyle.H4" Text="@roomsInUse.ToString()" Style="margin: 0; color: #1f2937;" />
+                    <RadzenText TextStyle="TextStyle.Caption" Text="Rooms In Use" Style="color: #6b7280;" />
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
     </div>
 
     <!-- Loading State -->
     @if (loading)
     {
-        <div class="loading-grid">
+        <RadzenRow Gap="1.5rem">
             @for (int i = 0; i < 6; i++)
             {
-                <div class="booking-card-skeleton">
-                    <div class="skeleton-header"></div>
-                    <div class="skeleton-line"></div>
-                    <div class="skeleton-line short"></div>
-                    <div class="skeleton-footer"></div>
-                </div>
+                <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                    <RadzenCard Style="padding: 1.5rem;">
+                        <RadzenText TextStyle="TextStyle.H6" Text="Loading..." />
+                        <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" Style="margin-top: 1rem;" />
+                    </RadzenCard>
+                </RadzenColumn>
             }
-        </div>
+        </RadzenRow>
     }
     else if (!filteredBookings.Any())
     {
         <!-- Empty State -->
-        <div class="empty-state">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-            <h3>No bookings found</h3>
-            <p>@(string.IsNullOrEmpty(searchTerm) ? "Create your first booking to get started." : "Try adjusting your search or filters.")</p>
-            <button class="btn-primary" @onclick="OpenCreateModal">Create Booking</button>
-        </div>
+        <RadzenCard Style="padding: 4rem 2rem; text-align: center;">
+            <RadzenIcon Icon="event_busy" Style="font-size: 4rem; color: #9ca3af; margin-bottom: 1rem;" />
+            <RadzenText TextStyle="TextStyle.H5" Text="No bookings found" Style="color: #1f2937; margin-bottom: 0.5rem;" />
+            <RadzenText TextStyle="TextStyle.Body1" Text="@(string.IsNullOrEmpty(searchTerm) ? "Create your first booking to get started." : "Try adjusting your search or filters.")"
+                        Style="color: #6b7280; margin-bottom: 1.5rem;" />
+            <RadzenButton Click="@OpenCreateModal" Icon="add" Text="Create Booking"
+                          ButtonStyle="ButtonStyle.Primary" />
+        </RadzenCard>
     }
     else
     {
         <!-- Bookings Grid -->
-        <div class="bookings-grid">
+        <RadzenRow Gap="1.5rem">
             @foreach (var booking in filteredBookings.OrderByDescending(b => b.StartTime))
             {
-                <div class="booking-card @GetBookingStatusClass(booking)">
-                    <div class="booking-header">
-                        <div class="booking-info">
-                            <h3 class="booking-title">@GetRoomName(booking.RoomId)</h3>
-                            <span class="booking-status @GetStatusBadgeClass(booking)">
-                                @GetBookingStatus(booking)
-                            </span>
-                        </div>
-                        <div class="booking-actions">
-                            <button class="btn-icon" @onclick="() => EditBooking(booking)" title="Edit Booking">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                </svg>
-                            </button>
-                            <button class="btn-icon btn-danger" @onclick="() => DeleteBooking(booking)" title="Delete Booking">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="3 6 5 6 21 6"></polyline>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="booking-details">
-                        <div class="detail-item">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <polyline points="12 6 12 12 16 14"></polyline>
-                            </svg>
-                            <span>@booking.StartTime.ToString("MMM dd, HH:mm") - @booking.EndTime.ToString("HH:mm")</span>
-                        </div>
-
-                        @if (booking.StudentId != null)
-                        {
-                            <div class="detail-item">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="12" cy="7" r="4"></circle>
-                                </svg>
-                                <span>Student: @GetStudentName(booking.StudentId.Value)</span>
+                <RadzenColumn Size="12" SizeMD="6" SizeLG="4">
+                    <RadzenCard Style="@($"padding: 1.5rem; height: 100%; display: flex; flex-direction: column; border-left: 4px solid {GetStatusColor(booking)};")">
+                        <!-- Booking Header -->
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                            <div>
+                                <RadzenText TextStyle="TextStyle.H6" Text="@(booking.RoomName ?? "Unknown Room")" Style="margin: 0 0 0.25rem 0; color: #1f2937;" />
+                                <RadzenBadge BadgeStyle="@GetStatusBadgeStyle(booking)" Text="@GetBookingStatusText(booking)" />
                             </div>
-                        }
-
-                        @if (booking.ProfessorId != null)
-                        {
-                            <div class="detail-item">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="9" cy="7" r="4"></circle>
-                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                                </svg>
-                                <span>Prof: @GetProfessorName(booking.ProfessorId.Value)</span>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <RadzenButton Click="@(() => ViewBookingDetails(booking))" Icon="visibility" ButtonStyle="ButtonStyle.Light"
+                                              Variant="Variant.Flat" Size="ButtonSize.Small" />
+                                <RadzenButton Click="@(() => EditBooking(booking))" Icon="edit" ButtonStyle="ButtonStyle.Light"
+                                              Variant="Variant.Flat" Size="ButtonSize.Small" />
+                                <RadzenButton Click="@(() => DeleteBooking(booking))" Icon="delete" ButtonStyle="ButtonStyle.Danger"
+                                              Variant="Variant.Flat" Size="ButtonSize.Small" />
                             </div>
-                        }
-
-                        @if (!string.IsNullOrEmpty(booking.Purpose))
-                        {
-                            <div class="detail-item">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                    <polyline points="14 2 14 8 20 8"></polyline>
-                                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                                </svg>
-                                <span>@booking.Purpose</span>
-                            </div>
-                        }
-                    </div>
-
-                    <div class="booking-footer">
-                        <div class="time-indicator">
-                            @GetTimeIndicator(booking)
                         </div>
-                        @if (IsBookingActive(booking))
-                        {
-                            <button class="btn-check-in" @onclick="() => CheckIn(booking)">
-                                Check In
-                            </button>
-                        }
-                    </div>
-                </div>
+
+                        <!-- Booking Details -->
+                        <div style="flex-grow: 1; margin-bottom: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                <RadzenIcon Icon="schedule" Style="color: #9ca3af;" />
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@($"{booking.StartTime:MMM dd, HH:mm} - {booking.EndTime:HH:mm}")" Style="color: #6b7280;" />
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(booking.StudentName))
+                            {
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <RadzenIcon Icon="school" Style="color: #9ca3af;" />
+                                    <RadzenText TextStyle="TextStyle.Body2" Text="@($"Student: {booking.StudentName}")" Style="color: #6b7280;" />
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrEmpty(booking.ProfessorName))
+                            {
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <RadzenIcon Icon="person" Style="color: #9ca3af;" />
+                                    <RadzenText TextStyle="TextStyle.Body2" Text="@($"Professor: {booking.ProfessorName}")" Style="color: #6b7280;" />
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrEmpty(booking.Purpose))
+                            {
+                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <RadzenIcon Icon="description" Style="color: #9ca3af;" />
+                                    <RadzenText TextStyle="TextStyle.Body2" Text="@booking.Purpose" Style="color: #6b7280;" />
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Booking Footer -->
+                        <div style="border-top: 1px solid #e5e7eb; padding-top: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <RadzenText TextStyle="TextStyle.Caption" Text="@GetTimeIndicator(booking)" Style="color: #6b7280;" />
+                                @if (IsBookingActive(booking))
+                                {
+                                    <RadzenButton Click="@(() => CheckIn(booking))" Text="Check In" Size="ButtonSize.ExtraSmall"
+                                                  ButtonStyle="ButtonStyle.Success" />
+                                }
+                            </div>
+                        </div>
+                    </RadzenCard>
+                </RadzenColumn>
             }
-        </div>
+        </RadzenRow>
     }
 </div>
-
-<!-- Create/Edit Modal -->
-@if (showModal)
-{
-    <div class="modal-overlay" @onclick="CloseModal">
-        <div class="modal-content" @onclick:stopPropagation="true">
-            <div class="modal-header">
-                <h2>@(isEditMode ? "Edit Booking" : "Create New Booking")</h2>
-                <button class="btn-close" @onclick="CloseModal">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                </button>
-            </div>
-
-            <div class="modal-body">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="room">Room *</label>
-                        <select id="room" @bind="currentBooking.RoomId" class="form-select">
-                            <option value="@Guid.Empty">Select a room</option>
-                            @foreach (var room in rooms)
-                            {
-                                <option value="@room.Id">@room.Name (@room.Capacity capacity)</option>
-                            }
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Booking Type *</label>
-                        <div class="radio-group">
-                            <label class="radio-label">
-                                <input type="radio" name="bookingType" value="student" @onchange="SetStudentBooking" checked="@isStudentBooking" />
-                                <span>Student</span>
-                            </label>
-                            <label class="radio-label">
-                                <input type="radio" name="bookingType" value="professor" @onchange="SetProfessorBooking" checked="@(!isStudentBooking)" />
-                                <span>Professor</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    @if (isStudentBooking)
-                    {
-                        <div class="form-group">
-                            <label for="student">Student *</label>
-                            <select id="student" @bind="currentBooking.StudentId" class="form-select">
-                                <option value="">Select a student</option>
-                                @foreach (var student in students)
-                                {
-                                    <option value="@student.Id">@student.LastName</option>
-                                }
-                            </select>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="form-group">
-                            <label for="professor">Professor *</label>
-                            <select id="professor" @bind="currentBooking.ProfessorId" class="form-select">
-                                <option value="">Select a professor</option>
-                                @foreach (var professor in professors)
-                                {
-                                    <option value="@professor.Id">@professor.LastName</option>
-                                }
-                            </select>
-                        </div>
-                    }
-
-                    <div class="form-group">
-                        <label for="startDate">Start Date *</label>
-                        <input id="startDate" @bind="startDateString" class="form-input" />
-                    </div>
-
-                    <div class="form-group">
-                        <label for="startTime">Start Time *</label>
-                        <input id="startTime"  @bind="startTimeString" class="form-input" />
-                    </div>
-
-                    <div class="form-group">
-                        <label for="endTime">End Time *</label>
-                        <input id="endTime"  @bind="endTimeString" class="form-input" />
-                    </div>
-
-                    <div class="form-group full-width">
-                        <label for="purpose">Purpose</label>
-                        <input id="purpose" type="text" @bind="currentBooking.Purpose" placeholder="Meeting, Study Session, Class, etc." class="form-input" />
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal-footer">
-                <button class="btn-secondary" @onclick="CloseModal">Cancel</button>
-                <button class="btn-primary" @onclick="SaveBooking" disabled="@(!IsFormValid())">
-                    @if (isSaving)
-                    {
-                        <svg class="spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="12" y1="2" x2="12" y2="6"></line>
-                            <line x1="12" y1="18" x2="12" y2="22"></line>
-                            <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
-                            <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
-                            <line x1="2" y1="12" x2="6" y2="12"></line>
-                            <line x1="18" y1="12" x2="22" y2="12"></line>
-                            <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
-                            <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
-                        </svg>
-                        @(isEditMode ? "Updating..." : "Creating...")
-                    }
-                    else
-                    {
-                        @(isEditMode ? "Update Booking" : "Create Booking")
-                    }
-                </button>
-            </div>
-        </div>
-    </div>
-}
-
-

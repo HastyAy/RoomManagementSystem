@@ -1,0 +1,181 @@
+﻿@using RoomManager.Shared.DTOs.RoomDto
+@using RoomManager.Shared.DTOs.UserDto
+@using RoomManager.Shared.DTOs.BookingDto
+@using Radzen.Blazor
+
+<RadzenStack Gap="1rem">
+    <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H3">
+        @(IsEdit ? "Edit Booking" : "Create New Booking")
+    </RadzenText>
+
+    <RadzenStack Gap="1rem">
+        @* Room Selection *@
+        <RadzenFormField Text="Room" Style="width: 100%;">
+            <RadzenDropDown @bind-Value="selectedRoomId"
+                            Data="Rooms"
+                            ValueProperty="Id"
+                            Change="OnRoomChanged"
+                            Placeholder="Select a room..."
+                            Style="width: 100%;">
+                <Template>
+                    <div style="padding: 0.5rem 0;">
+                        <div style="font-weight: 600; color: #1f2937;">@context.Name</div>
+                        <div style="font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem;">
+                            <span style="background: #eff6ff; color: #2563eb; padding: 0.125rem 0.5rem; border-radius: 0.375rem; font-size: 0.75rem; margin-right: 0.5rem;">
+                                @context.Type
+                            </span>
+                            Capacity: @context.Capacity
+                            @if (!string.IsNullOrEmpty(context.Location))
+                            {
+                                <span> • @context.Location</span>
+                            }
+                        </div>
+                    </div>
+                </Template>
+            </RadzenDropDown>
+        </RadzenFormField>
+
+        @* User Type Selection *@
+        <RadzenFormField Text="User Type" Style="width: 100%;">
+            <RadzenDropDown @bind-Value="userType"
+                            Data="userTypeOptions"
+                            TextProperty="Text"
+                            ValueProperty="Value"
+                            Change="OnUserTypeChanged"
+                            Style="width: 100%;" />
+        </RadzenFormField>
+
+        @* Student Selection *@
+        @if (userType == "student")
+        {
+            <RadzenFormField Text="Student" Style="width: 100%;">
+                <RadzenDropDown @bind-Value="selectedStudentId"
+                                Data="Students"
+                                ValueProperty="Id"
+                                Placeholder="Select a student..."
+                                Style="width: 100%;">
+                    <Template>
+                        <div style="padding: 0.5rem 0;">
+                            <div style="font-weight: 600; color: #1f2937;">@context.FullName</div>
+                            <div style="font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem;">
+                                <span style="background: #f0fdf4; color: #166534; padding: 0.125rem 0.5rem; border-radius: 0.375rem; font-size: 0.75rem; margin-right: 0.5rem;">
+                                    @context.MatriNumber
+                                </span>
+                                @context.Email
+                            </div>
+                        </div>
+                    </Template>
+                </RadzenDropDown>
+            </RadzenFormField>
+        }
+
+        @* Professor Selection *@
+        @if (userType == "professor")
+        {
+            <RadzenFormField Text="Professor" Style="width: 100%;">
+                <RadzenDropDown @bind-Value="selectedProfessorId"
+                                Data="Professors"
+                                ValueProperty="Id"
+                                Placeholder="Select a professor..."
+                                Style="width: 100%;">
+                    <Template>
+                        <div style="padding: 0.5rem 0;">
+                            <div style="font-weight: 600; color: #1f2937;">@context.FullName</div>
+                            <div style="font-size: 0.875rem; color: #6b7280; margin-top: 0.25rem;">
+                                @context.Email
+                                @if (!string.IsNullOrEmpty(context.Department))
+                                {
+                                    <span style="background: #fef3c7; color: #92400e; padding: 0.125rem 0.5rem; border-radius: 0.375rem; font-size: 0.75rem; margin-left: 0.5rem;">
+                                        @context.Department
+                                    </span>
+                                }
+                            </div>
+                        </div>
+                    </Template>
+                </RadzenDropDown>
+            </RadzenFormField>
+        }
+
+        @* Date Selection *@
+        <RadzenFormField Text="Date" Style="width: 100%;">
+            <RadzenDatePicker @bind-Value="bookingDate"
+                              DateFormat="dd/MM/yyyy"
+                              Change="OnDateTimeChanged"
+                              Style="width: 100%;" />
+        </RadzenFormField>
+
+        @* Time Selection *@
+        <RadzenRow Gap="1rem">
+            <RadzenColumn Size="6">
+                <RadzenFormField Text="Start Time" Style="width: 100%;">
+                    <RadzenDatePicker @bind-Value="startTime"
+                                      DateFormat="HH:mm"
+                                      ShowTime="true"
+                                      ShowTimeOkButton="true"
+                                      TimeOnly="true"
+                                      Change="OnDateTimeChanged"
+                                      Style="width: 100%;" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="6">
+                <RadzenFormField Text="End Time" Style="width: 100%;">
+                    <RadzenDatePicker @bind-Value="endTime"
+                                      DateFormat="HH:mm"
+                                      ShowTime="true"
+                                      ShowTimeOkButton="true"
+                                      TimeOnly="true"
+                                      Change="OnDateTimeChanged"
+                                      Style="width: 100%;" />
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+
+        @* Duration Display *@
+        @if (!string.IsNullOrEmpty(GetDurationText()))
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="false" Variant="Variant.Flat">
+                <RadzenText TextStyle="TextStyle.Body2">
+                    Duration: @GetDurationText()
+                </RadzenText>
+            </RadzenAlert>
+        }
+
+        @* Room Details *@
+        @if (selectedRoom != null)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Secondary" ShowIcon="false" Variant="Variant.Flat">
+                <RadzenText TextStyle="TextStyle.Body2">
+                    <strong>@selectedRoom.Name</strong> - @selectedRoom.Type
+                    <br />
+                    Capacity: @selectedRoom.Capacity
+                    @if (!string.IsNullOrEmpty(selectedRoom.Location))
+                    {
+                        <br />
+                        <text>Location: @selectedRoom.Location</text>
+                    }
+                </RadzenText>
+            </RadzenAlert>
+        }
+
+        @* Purpose *@
+        <RadzenFormField Text="Purpose (Optional)" Style="width: 100%;">
+            <RadzenTextArea @bind-Value="purpose"
+                            Placeholder="Enter the purpose of this booking..."
+                            Rows="3"
+                            Style="width: 100%;" />
+        </RadzenFormField>
+
+        @* Action Buttons *@
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="1rem">
+            <RadzenButton Text="Cancel"
+                          ButtonStyle="ButtonStyle.Light"
+                          Click="Cancel"
+                          Disabled="saving" />
+            <RadzenButton Text="@(IsEdit ? "Update" : "Create")"
+                          ButtonStyle="ButtonStyle.Primary"
+                          Click="OnSubmit"
+                          IsBusy="saving"
+                          Disabled="!IsFormValid()" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenStack>

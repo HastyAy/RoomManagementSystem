@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using RoomManager.BookingService.Context;
-
-namespace RoomManager.RoomService;
+namespace RoomManager.BookingService;
 
 public static class ContextRegistration
 {

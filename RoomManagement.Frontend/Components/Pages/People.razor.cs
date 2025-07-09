@@ -1,31 +1,23 @@
 using Microsoft.JSInterop;
 using Radzen;
 using Radzen.Blazor;
-using RoomManagement.Frontend.Components.FormModels;
 using RoomManagement.Frontend.Services;
-using RoomManager.Shared.Entities;
-
+using RoomManager.Shared.DTOs;
+using RoomManager.Shared.DTOs.UserDto;
+using RoomManagement.Frontend.Components.FormDialogs;
 namespace RoomManagement.Frontend.Components.Pages
 {
     public partial class People
     {
         // Data collections
-        private List<Student> students = new();
-        private List<Student> filteredStudents = new();
-        private List<Professor> professors = new();
-        private List<Professor> filteredProfessors = new();
+        private List<StudentDto> students = new();
+        private List<StudentDto> filteredStudents = new();
+        private List<ProfessorDto> professors = new();
+        private List<ProfessorDto> filteredProfessors = new();
 
         // Grid references
-        private RadzenDataGrid<Student> studentsGrid;
-        private RadzenDataGrid<Professor> professorsGrid;
-
-        // Editing state for students
-        private string studentColumnEditing = "";
-        private List<Student> studentsToUpdate = new();
-
-        // Editing state for professors
-        private string professorColumnEditing = "";
-        private List<Professor> professorsToUpdate = new();
+        private RadzenDataGrid<StudentDto>? studentsGrid;
+        private RadzenDataGrid<ProfessorDto>? professorsGrid;
 
         // UI state
         private bool loading = true;
@@ -34,21 +26,20 @@ namespace RoomManagement.Frontend.Components.Pages
         private int PageSize = 10;
 
         // Options
-        private List<dynamic> viewModeOptions = new()
-    {
-        new { Text = "Both", Value = "both" },
-        new { Text = "Students Only", Value = "students" },
-        new { Text = "Professors Only", Value = "professors" }
-    };
+        private readonly List<dynamic> viewModeOptions = new()
+        {
+            new { Text = "Both", Value = "both" },
+            new { Text = "Students Only", Value = "students" },
+            new { Text = "Professors Only", Value = "professors" }
+        };
 
-        private List<dynamic> pageSizeOptions = new()
-    {
-        new { Label = "10", Value = 10 },
-        new { Label = "25", Value = 25 },
-        new { Label = "50", Value = 50 },
-        new { Label = "100", Value = 100 },
-        new { Label = "All", Value = -1 }
-    };
+        private readonly List<dynamic> pageSizeOptions = new()
+        {
+            new { Label = "10", Value = 10 },
+            new { Label = "25", Value = 25 },
+            new { Label = "50", Value = 50 },
+            new { Label = "100", Value = 100 }
+        };
 
         protected override async Task OnInitializedAsync()
         {
@@ -60,19 +51,12 @@ namespace RoomManagement.Frontend.Components.Pages
             loading = true;
             try
             {
-                await LoadStudents();
-                await LoadProfessors();
+                await Task.WhenAll(LoadStudents(), LoadProfessors());
                 ApplyGlobalFilter();
             }
             catch (Exception ex)
             {
-                NotificationService.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = "Loading Failed",
-                    Detail = $"Error loading data: {ex.Message}",
-                    Duration = 5000
-                });
+                ShowErrorNotification("Loading Failed", $"Error loading data: {ex.Message}");
             }
             finally
             {
@@ -104,46 +88,49 @@ namespace RoomManagement.Frontend.Components.Pages
                     s.FirstName?.ToLower().Contains(searchLower) == true ||
                     s.LastName?.ToLower().Contains(searchLower) == true ||
                     s.Email?.ToLower().Contains(searchLower) == true ||
-                    s.MatriNumber?.ToLower().Contains(searchLower) == true).ToList();
+                    s.MatriNumber?.ToLower().Contains(searchLower) == true ||
+                    s.FullName?.ToLower().Contains(searchLower) == true).ToList();
 
                 filteredProfessors = professors.Where(p =>
                     p.FirstName?.ToLower().Contains(searchLower) == true ||
                     p.LastName?.ToLower().Contains(searchLower) == true ||
-                    p.Email?.ToLower().Contains(searchLower) == true).ToList();
+                    p.Email?.ToLower().Contains(searchLower) == true ||
+                    p.Department?.ToLower().Contains(searchLower) == true ||
+                    p.Title?.ToLower().Contains(searchLower) == true ||
+                    p.FullName?.ToLower().Contains(searchLower) == true).ToList();
             }
             StateHasChanged();
         }
 
-        // Dialog methods for adding/editing
+        // Dialog methods for adding/editing students
         private async Task OpenAddStudentDialog()
         {
-            var student = new StudentFormModel();
+            var createRequest = new CreateStudentRequest();
 
             var result = await DialogService.OpenAsync<StudentFormDialog>("Add New Student",
-                new Dictionary<string, object>()
-                    {
-                { "Student", student },
-                { "IsEdit", false }
-                    },
+                new Dictionary<string, object>
+                {
+                    { "Student", createRequest },
+                    { "IsEdit", false }
+                },
                 new DialogOptions()
                 {
                     Width = "500px",
-                    Height = "400px",
+                    Height = "450px",
                     Resizable = true,
                     Draggable = true
                 });
-            var substudent = result as StudentFormModel;
-            if (result != null && result is StudentFormModel submittedStudent)
+
+            if (result is CreateStudentRequest submittedStudent)
             {
-                await AddStudent(substudent);
+                await AddStudent(submittedStudent);
             }
         }
 
-        private async Task OpenEditStudentDialog(Student student)
+        private async Task OpenEditStudentDialog(StudentDto student)
         {
-            var studentForm = new StudentFormModel
+            var updateRequest = new CreateStudentRequest // Using CreateStudentRequest for updates too
             {
-                Id = student.Id,
                 FirstName = student.FirstName,
                 LastName = student.LastName,
                 Email = student.Email,
@@ -151,386 +138,235 @@ namespace RoomManagement.Frontend.Components.Pages
             };
 
             var result = await DialogService.OpenAsync<StudentFormDialog>("Edit Student",
-                new Dictionary<string, object>()
-                    {
-                { "Student", studentForm },
-                { "IsEdit", true }
-                    },
+                new Dictionary<string, object>
+                {
+                    { "Student", updateRequest },
+                    { "IsEdit", true }
+                },
                 new DialogOptions()
                 {
                     Width = "500px",
-                    Height = "400px",
+                    Height = "450px",
                     Resizable = true,
                     Draggable = true
                 });
-            var substudent = result as StudentFormModel;
-            if (result != null && result is StudentFormModel submittedStudent)
+
+            if (result is CreateStudentRequest submittedStudent)
             {
-                await UpdateStudentFromForm(substudent);
+                await UpdateStudent(student.Id, submittedStudent);
             }
         }
 
+        // Dialog methods for adding/editing professors
         private async Task OpenAddProfessorDialog()
         {
-            var professor = new ProfessorFormModel();
+            var createRequest = new CreateProfessorRequest();
 
             var result = await DialogService.OpenAsync<ProfessorFormDialog>("Add New Professor",
-                new Dictionary<string, object>()
-                    {
-                { "Professor", professor },
-                { "IsEdit", false }
-                    },
+                new Dictionary<string, object>
+                {
+                    { "Professor", createRequest },
+                    { "IsEdit", false }
+                },
                 new DialogOptions()
                 {
                     Width = "500px",
-                    Height = "350px",
+                    Height = "450px",
                     Resizable = true,
                     Draggable = true
                 });
-            var subProf = result as ProfessorFormModel;
-            if (result != null && result is ProfessorFormModel submittedProfessor)
+
+            if (result is CreateProfessorRequest submittedProfessor)
             {
-                await AddProfessor(subProf);
+                await AddProfessor(submittedProfessor);
             }
         }
 
-        private async Task OpenEditProfessorDialog(Professor professor)
+        private async Task OpenEditProfessorDialog(ProfessorDto professor)
         {
-            var professorForm = new ProfessorFormModel
+            var updateRequest = new CreateProfessorRequest // Using CreateProfessorRequest for updates too
             {
-                Id = professor.Id,
                 FirstName = professor.FirstName,
                 LastName = professor.LastName,
-                Email = professor.Email
+                Email = professor.Email,
+                Department = professor.Department,
+                Title = professor.Title
             };
 
             var result = await DialogService.OpenAsync<ProfessorFormDialog>("Edit Professor",
-                new Dictionary<string, object>()
-                    {
-                { "Professor", professorForm },
-                { "IsEdit", true }
-                    },
+                new Dictionary<string, object>
+                {
+                    { "Professor", updateRequest },
+                    { "IsEdit", true }
+                },
                 new DialogOptions()
                 {
                     Width = "500px",
-                    Height = "350px",
+                    Height = "450px",
                     Resizable = true,
                     Draggable = true
                 });
-            var subprof = result as ProfessorFormModel;
-            if (result != null && result is ProfessorFormModel submittedProfessor)
+
+            if (result is CreateProfessorRequest submittedProfessor)
             {
-                await UpdateProfessorFromForm(subprof);
+                await UpdateProfessor(professor.Id, submittedProfessor);
             }
         }
 
-        // Add/Update methods
-        private async Task AddStudent(StudentFormModel studentForm)
+        // CRUD operations for students
+        private async Task AddStudent(CreateStudentRequest studentRequest)
         {
             try
             {
-                var student = new Student
-                {
-                    FirstName = studentForm.FirstName,
-                    LastName = studentForm.LastName,
-                    Email = studentForm.Email,
-                    MatriNumber = studentForm.MatriNumber
-                };
+                var success = await StudentService.AddAsync(studentRequest);
 
-                await StudentService.AddAsync(student);
-                await LoadStudents();
-                ApplyGlobalFilter();
-
-                NotificationService.Notify(new NotificationMessage
+                if (success)
                 {
-                    Severity = NotificationSeverity.Success,
-                    Summary = "Student Added",
-                    Detail = $"Student '{student.FirstName} {student.LastName}' added successfully",
-                    Duration = 3000
-                });
-            }
-            catch (Exception ex)
-            {
-                NotificationService.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = "Add Failed",
-                    Detail = $"Error adding student: {ex.Message}",
-                    Duration = 5000
-                });
-            }
-        }
-
-        private async Task UpdateStudentFromForm(StudentFormModel studentForm)
-        {
-            try
-            {
-                var student = students.FirstOrDefault(s => s.Id == studentForm.Id);
-                if (student != null)
-                {
-                    student.FirstName = studentForm.FirstName;
-                    student.LastName = studentForm.LastName;
-                    student.Email = studentForm.Email;
-                    student.MatriNumber = studentForm.MatriNumber;
-
-                    await StudentService.UpdateAsync(student);
+                    await LoadStudents();
                     ApplyGlobalFilter();
-
-                    NotificationService.Notify(new NotificationMessage
-                    {
-                        Severity = NotificationSeverity.Success,
-                        Summary = "Student Updated",
-                        Detail = $"Student '{student.FirstName} {student.LastName}' updated successfully",
-                        Duration = 3000
-                    });
+                    ShowSuccessNotification("Student Added", $"Student '{studentRequest.FirstName} {studentRequest.LastName}' added successfully");
+                }
+                else
+                {
+                    ShowErrorNotification("Add Failed", "Failed to add student");
                 }
             }
             catch (Exception ex)
             {
-                NotificationService.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = "Update Failed",
-                    Detail = $"Error updating student: {ex.Message}",
-                    Duration = 5000
-                });
+                ShowErrorNotification("Add Failed", $"Error adding student: {ex.Message}");
             }
         }
 
-        private async Task AddProfessor(ProfessorFormModel professorForm)
+        private async Task UpdateStudent(Guid studentId, CreateStudentRequest studentRequest)
         {
             try
             {
-                var professor = new Professor
-                {
-                    FirstName = professorForm.FirstName,
-                    LastName = professorForm.LastName,
-                    Email = professorForm.Email
-                };
+                var success = await StudentService.UpdateAsync(studentId, studentRequest);
 
-                await ProfessorService.AddAsync(professor);
-                await LoadProfessors();
-                ApplyGlobalFilter();
-
-                NotificationService.Notify(new NotificationMessage
+                if (success)
                 {
-                    Severity = NotificationSeverity.Success,
-                    Summary = "Professor Added",
-                    Detail = $"Professor '{professor.FirstName} {professor.LastName}' added successfully",
-                    Duration = 3000
-                });
-            }
-            catch (Exception ex)
-            {
-                NotificationService.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = "Add Failed",
-                    Detail = $"Error adding professor: {ex.Message}",
-                    Duration = 5000
-                });
-            }
-        }
-
-        private async Task UpdateProfessorFromForm(ProfessorFormModel professorForm)
-        {
-            try
-            {
-                var professor = professors.FirstOrDefault(p => p.Id == professorForm.Id);
-                if (professor != null)
-                {
-                    professor.FirstName = professorForm.FirstName;
-                    professor.LastName = professorForm.LastName;
-                    professor.Email = professorForm.Email;
-
-                    await ProfessorService.UpdateAsync(professor);
+                    await LoadStudents();
                     ApplyGlobalFilter();
-
-                    NotificationService.Notify(new NotificationMessage
-                    {
-                        Severity = NotificationSeverity.Success,
-                        Summary = "Professor Updated",
-                        Detail = $"Professor '{professor.FirstName} {professor.LastName}' updated successfully",
-                        Duration = 3000
-                    });
+                    ShowSuccessNotification("Student Updated", $"Student '{studentRequest.FirstName} {studentRequest.LastName}' updated successfully");
+                }
+                else
+                {
+                    ShowErrorNotification("Update Failed", "Failed to update student");
                 }
             }
             catch (Exception ex)
             {
-                NotificationService.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = "Update Failed",
-                    Detail = $"Error updating professor: {ex.Message}",
-                    Duration = 5000
-                });
+                ShowErrorNotification("Update Failed", $"Error updating student: {ex.Message}");
             }
         }
 
-        // Legacy grid editing methods (keeping for inline editing)
-        private async Task OnUpdateStudent(Student student)
-        {
-            try
-            {
-                await StudentService.UpdateAsync(student);
-                NotificationService.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Success,
-                    Summary = "Student Updated",
-                    Detail = $"Student '{student.LastName}' updated successfully",
-                    Duration = 3000
-                });
-            }
-            catch (Exception ex)
-            {
-                NotificationService.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = "Update Failed",
-                    Detail = $"Error updating student: {ex.Message}",
-                    Duration = 5000
-                });
-            }
-        }
-
-        private void OnStudentCellClick(DataGridCellMouseEventArgs<Student> args)
-        {
-            var columnProperty = args.Column.Property;
-
-            if (studentsToUpdate.Any())
-            {
-                OnUpdateStudent(studentsToUpdate.First());
-            }
-
-            studentColumnEditing = columnProperty;
-            studentsToUpdate.Clear();
-            studentsToUpdate.Add(args.Data);
-            studentsGrid.EditRow(args.Data);
-        }
-
-        private bool IsStudentEditing(string columnName, Student student)
-        {
-            return studentColumnEditing == columnName && studentsToUpdate.Contains(student);
-        }
-
-        private async Task OnUpdateProfessor(Professor professor)
-        {
-            try
-            {
-                await ProfessorService.UpdateAsync(professor);
-                NotificationService.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Success,
-                    Summary = "Professor Updated",
-                    Detail = $"Professor '{professor.LastName}' updated successfully",
-                    Duration = 3000
-                });
-            }
-            catch (Exception ex)
-            {
-                NotificationService.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = "Update Failed",
-                    Detail = $"Error updating professor: {ex.Message}",
-                    Duration = 5000
-                });
-            }
-        }
-
-        private void OnProfessorCellClick(DataGridCellMouseEventArgs<Professor> args)
-        {
-            var columnProperty = args.Column.Property;
-
-            if (professorsToUpdate.Any())
-            {
-                OnUpdateProfessor(professorsToUpdate.First());
-            }
-
-            professorColumnEditing = columnProperty;
-            professorsToUpdate.Clear();
-            professorsToUpdate.Add(args.Data);
-            professorsGrid.EditRow(args.Data);
-        }
-
-        private bool IsProfessorEditing(string columnName, Professor professor)
-        {
-            return professorColumnEditing == columnName && professorsToUpdate.Contains(professor);
-        }
-
-        // Delete methods
-        private async Task DeleteStudent(Student student)
+        private async Task DeleteStudent(StudentDto student)
         {
             try
             {
                 var confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
-                    $"Are you sure you want to delete student '{student.FirstName} {student.LastName}'?");
+                    $"Are you sure you want to delete student '{student.FullName}'? This action cannot be undone.");
 
                 if (!confirmed) return;
 
-                await StudentService.DeleteAsync(student.Id);
-                students.RemoveAll(s => s.Id == student.Id);
-                ApplyGlobalFilter();
+                var success = await StudentService.DeleteAsync(student.Id);
 
-                NotificationService.Notify(new NotificationMessage
+                if (success)
                 {
-                    Severity = NotificationSeverity.Success,
-                    Summary = "Student Deleted",
-                    Detail = $"Student '{student.FirstName} {student.LastName}' deleted successfully",
-                    Duration = 3000
-                });
+                    await LoadStudents();
+                    ApplyGlobalFilter();
+                    ShowSuccessNotification("Student Deleted", $"Student '{student.FullName}' deleted successfully");
+                }
+                else
+                {
+                    ShowErrorNotification("Delete Failed", "Failed to delete student");
+                }
             }
             catch (Exception ex)
             {
-                NotificationService.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = "Delete Failed",
-                    Detail = $"Error deleting student: {ex.Message}",
-                    Duration = 5000
-                });
+                ShowErrorNotification("Delete Failed", $"Error deleting student: {ex.Message}");
             }
         }
 
-        private async Task DeleteProfessor(Professor professor)
+        // CRUD operations for professors
+        private async Task AddProfessor(CreateProfessorRequest professorRequest)
+        {
+            try
+            {
+                var success = await ProfessorService.AddAsync(professorRequest);
+
+                if (success)
+                {
+                    await LoadProfessors();
+                    ApplyGlobalFilter();
+                    ShowSuccessNotification("Professor Added", $"Professor '{professorRequest.FirstName} {professorRequest.LastName}' added successfully");
+                }
+                else
+                {
+                    ShowErrorNotification("Add Failed", "Failed to add professor");
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowErrorNotification("Add Failed", $"Error adding professor: {ex.Message}");
+            }
+        }
+
+        private async Task UpdateProfessor(Guid professorId, CreateProfessorRequest professorRequest)
+        {
+            try
+            {
+                var success = await ProfessorService.UpdateAsync(professorId, professorRequest);
+
+                if (success)
+                {
+                    await LoadProfessors();
+                    ApplyGlobalFilter();
+                    ShowSuccessNotification("Professor Updated", $"Professor '{professorRequest.FirstName} {professorRequest.LastName}' updated successfully");
+                }
+                else
+                {
+                    ShowErrorNotification("Update Failed", "Failed to update professor");
+                }
+            }
+            catch (Exception ex)
+            {
+                ShowErrorNotification("Update Failed", $"Error updating professor: {ex.Message}");
+            }
+        }
+
+        private async Task DeleteProfessor(ProfessorDto professor)
         {
             try
             {
                 var confirmed = await JSRuntime.InvokeAsync<bool>("confirm",
-                    $"Are you sure you want to delete professor '{professor.FirstName} {professor.LastName}'?");
+                    $"Are you sure you want to delete professor '{professor.FullName}'? This action cannot be undone.");
 
                 if (!confirmed) return;
 
-                await ProfessorService.DeleteAsync(professor.Id);
-                professors.RemoveAll(p => p.Id == professor.Id);
-                ApplyGlobalFilter();
+                var success = await ProfessorService.DeleteAsync(professor.Id);
 
-                NotificationService.Notify(new NotificationMessage
+                if (success)
                 {
-                    Severity = NotificationSeverity.Success,
-                    Summary = "Professor Deleted",
-                    Detail = $"Professor '{professor.FirstName} {professor.LastName}' deleted successfully",
-                    Duration = 3000
-                });
+                    await LoadProfessors();
+                    ApplyGlobalFilter();
+                    ShowSuccessNotification("Professor Deleted", $"Professor '{professor.FullName}' deleted successfully");
+                }
+                else
+                {
+                    ShowErrorNotification("Delete Failed", "Failed to delete professor");
+                }
             }
             catch (Exception ex)
             {
-                NotificationService.Notify(new NotificationMessage
-                {
-                    Severity = NotificationSeverity.Error,
-                    Summary = "Delete Failed",
-                    Detail = $"Error deleting professor: {ex.Message}",
-                    Duration = 5000
-                });
+                ShowErrorNotification("Delete Failed", $"Error deleting professor: {ex.Message}");
             }
         }
 
         // Page size change
         private async Task OnPageSizeChanged(object selectedPageSize)
         {
-            PageSize = (int)selectedPageSize == -1
-                ? Math.Max(filteredStudents.Count, filteredProfessors.Count)
-                : (int)selectedPageSize;
+            PageSize = (int)selectedPageSize;
 
             if (studentsGrid != null)
             {
@@ -543,6 +379,29 @@ namespace RoomManagement.Frontend.Components.Pages
                 await professorsGrid.GoToPage(0);
                 await professorsGrid.Reload();
             }
+        }
+
+        // Notification helpers
+        private void ShowSuccessNotification(string summary, string detail)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = summary,
+                Detail = detail,
+                Duration = 3000
+            });
+        }
+
+        private void ShowErrorNotification(string summary, string detail)
+        {
+            NotificationService.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = summary,
+                Detail = detail,
+                Duration = 5000
+            });
         }
     }
 }

@@ -1,0 +1,75 @@
+﻿@using RoomManager.Shared.DTOs
+@using Radzen
+@using Radzen.Blazor
+@using RoomManager.Shared.DTOs.UserDto
+@inject DialogService DialogService
+
+<RadzenTemplateForm TItem="CreateProfessorRequest" Data="@Professor" Submit="@OnSubmit">
+    <RadzenStack Gap="1.5rem">
+        <!-- Personal Information Section -->
+        <RadzenFieldset Text="Personal Information">
+            <RadzenRow Gap="1rem">
+                <RadzenColumn Size="6">
+                    <RadzenFormField Text="First Name" Variant="Variant.Outlined">
+                        <RadzenTextBox @bind-Value="@Professor.FirstName" Placeholder="Enter first name" Style="width: 100%;" MaxLength="50" />
+                    </RadzenFormField>
+                </RadzenColumn>
+                <RadzenColumn Size="6">
+                    <RadzenFormField Text="Last Name" Variant="Variant.Outlined">
+                        <RadzenTextBox @bind-Value="@Professor.LastName" Placeholder="Enter last name" Style="width: 100%;" MaxLength="50" />
+                    </RadzenFormField>
+                </RadzenColumn>
+            </RadzenRow>
+        </RadzenFieldset>
+
+        <!-- Contact Information Section -->
+        <RadzenFieldset Text="Contact Information">
+            <RadzenFormField Text="Email Address" Variant="Variant.Outlined">
+                <RadzenTextBox @bind-Value="@Professor.Email" Placeholder="Enter email address" Style="width: 100%;" MaxLength="100" />
+            </RadzenFormField>
+        </RadzenFieldset>
+
+        <!-- Professional Information Section -->
+        <RadzenFieldset Text="Professional Information">
+            <RadzenRow Gap="1rem">
+                <RadzenColumn Size="6">
+                    <RadzenFormField Text="Department" Variant="Variant.Outlined">
+                        <RadzenDropDown @bind-Value="@Professor.Department" Data="@departmentOptions" 
+                            Placeholder="Select department" AllowClear="true" AllowFiltering="true" Style="width: 100%;" />
+                    </RadzenFormField>
+                </RadzenColumn>
+                <RadzenColumn Size="6">
+                    <RadzenFormField Text="Title" Variant="Variant.Outlined">
+                        <RadzenDropDown @bind-Value="@Professor.Title" Data="@titleOptions" 
+                            Placeholder="Select title" AllowClear="true" Style="width: 100%;" />
+                    </RadzenFormField>
+                </RadzenColumn>
+            </RadzenRow>
+        </RadzenFieldset>
+
+        <!-- Preview Section -->
+        @if (!string.IsNullOrEmpty(Professor.FirstName) || !string.IsNullOrEmpty(Professor.LastName))
+        {
+            <RadzenAlert Shade="Shade.Light" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Info">
+                <RadzenIcon Icon="person" />
+                <strong>Preview:</strong> @GetFullName()
+                @if (!string.IsNullOrEmpty(Professor.Department))
+                {
+                    <span> • @Professor.Department</span>
+                }
+                @if (!string.IsNullOrEmpty(Professor.Title))
+                {
+                    <span> • @Professor.Title</span>
+                }
+            </RadzenAlert>
+        }
+    </RadzenStack>
+
+    <!-- Dialog Actions -->
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem" Style="margin-top: 2rem;">
+        <RadzenButton Text="Cancel" Click="@Cancel" ButtonStyle="ButtonStyle.Light" Disabled="@saving" />
+        <RadzenButton Text="@(IsEdit ? "Update Professor" : "Add Professor")" ButtonType="ButtonType.Submit" 
+            ButtonStyle="ButtonStyle.Primary" IsBusy="@saving" />
+    </RadzenStack>
+</RadzenTemplateForm>
+

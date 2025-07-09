@@ -24,27 +24,26 @@ namespace RoomManagement.Frontend
 
             builder.AddFrontendServices();
 
+            // Updated to point to separate microservices
             builder.Services.AddHttpClient<RoomService>(client =>
             {
-                client.BaseAddress = new Uri("https://localhost:7012"); 
+                client.BaseAddress = new Uri("https://localhost:7001"); // RoomService
             });
 
             builder.Services.AddHttpClient<StudentService>(client =>
             {
-                client.BaseAddress = new Uri("https://localhost:7084");
+                client.BaseAddress = new Uri("https://localhost:7002"); // UserService
             });
 
             builder.Services.AddHttpClient<ProfessorService>(client =>
             {
-                client.BaseAddress = new Uri("https://localhost:7084");
+                client.BaseAddress = new Uri("https://localhost:7002"); // UserService
             });
 
             builder.Services.AddHttpClient<BookingService>(client =>
             {
-                client.BaseAddress = new Uri("https://localhost:7084");
+                client.BaseAddress = new Uri("https://localhost:7003"); // BookingService
             });
-
-
 
             var app = builder.Build();
 

@@ -1,5 +1,5 @@
 ﻿using OfficeOpenXml;
-using RoomManager.Shared.Entities;
+using RoomManager.Shared.DTOs.UserDto;
 using System.Net.Mail;
 
 namespace RoomManagement.Frontend.Services
@@ -126,8 +126,8 @@ namespace RoomManagement.Frontend.Services
                         continue;
                     }
 
-                    // Create and save student
-                    var student = new Student
+                    // Create and save student using DTO
+                    var createStudentRequest = new CreateStudentRequest
                     {
                         FirstName = firstName,
                         LastName = lastName,
@@ -135,13 +135,25 @@ namespace RoomManagement.Frontend.Services
                         Email = email
                     };
 
-                    await _studentService.AddAsync(student);
+                    var success = await _studentService.AddAsync(createStudentRequest);
 
-                    // Add to existing collections to prevent duplicates in the same file
-                    existingEmails.Add(email.ToLower());
-                    existingMatriNumbers.Add(matriNumber.ToLower());
-
-                    result.SuccessCount++;
+                    if (success)
+                    {
+                        // Add to existing collections to prevent duplicates in the same file
+                        existingEmails.Add(email.ToLower());
+                        existingMatriNumbers.Add(matriNumber.ToLower());
+                        result.SuccessCount++;
+                    }
+                    else
+                    {
+                        result.ErrorCount++;
+                        result.Errors.Add(new ImportError
+                        {
+                            Row = row,
+                            Message = "Failed to save student",
+                            FileName = fileName
+                        });
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -196,20 +208,34 @@ namespace RoomManagement.Frontend.Services
                         continue;
                     }
 
-                    // Create and save professor
-                    var professor = new Professor
+                    // Create and save professor using DTO
+                    var createProfessorRequest = new CreateProfessorRequest
                     {
                         FirstName = firstName,
                         LastName = lastName,
-                        Email = email
+                        Email = email,
+                        Department = null, // You might want to add a column for this
+                        Title = null // You might want to add a column for this
                     };
 
-                    await _professorService.AddAsync(professor);
+                    var success = await _professorService.AddAsync(createProfessorRequest);
 
-                    // Add to existing collection to prevent duplicates in the same file
-                    existingEmails.Add(email.ToLower());
-
-                    result.SuccessCount++;
+                    if (success)
+                    {
+                        // Add to existing collection to prevent duplicates in the same file
+                        existingEmails.Add(email.ToLower());
+                        result.SuccessCount++;
+                    }
+                    else
+                    {
+                        result.ErrorCount++;
+                        result.Errors.Add(new ImportError
+                        {
+                            Row = row,
+                            Message = "Failed to save professor",
+                            FileName = fileName
+                        });
+                    }
                 }
                 catch (Exception ex)
                 {

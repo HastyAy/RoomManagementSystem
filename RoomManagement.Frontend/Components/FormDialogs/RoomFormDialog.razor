@@ -1,0 +1,44 @@
+﻿@using RoomManager.Shared.DTOs
+@using Radzen
+@using Radzen.Blazor
+@inject DialogService DialogService
+
+<RadzenTemplateForm TItem="object" Data="@Room" Submit="@OnSubmit">
+    <RadzenStack Gap="1rem">
+        <RadzenFormField Text="Room Name">
+            <RadzenTextBox @bind-Value="@roomName" Name="roomName" Style="width:100%;" />
+        </RadzenFormField>
+
+        <RadzenRow Gap="1rem">
+            <RadzenColumn Size="6">
+                <RadzenFormField Text="Room Type" Variant="Variant.Outlined">
+                    <RadzenDropDown @bind-Value="@roomType" Data="@roomTypes" Placeholder="Select type" Style="width: 100%;" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="6">
+                <RadzenFormField Text="Capacity" Variant="Variant.Outlined">
+                    <RadzenNumeric @bind-Value="@roomCapacity" Min="1" Max="1000" Placeholder="Enter capacity" Style="width: 100%;" />
+                </RadzenFormField>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <!-- Location Field -->
+        <RadzenFormField Text="Location" Variant="Variant.Outlined">
+            <RadzenTextBox @bind-Value="@roomLocation" Placeholder="Enter location (optional)" Style="width: 100%;" />
+        </RadzenFormField>
+
+        <!-- Description Field -->
+        <RadzenFormField Text="Description" Variant="Variant.Outlined">
+            <RadzenTextArea @bind-Value="@roomDescription" Placeholder="Enter description (optional)" 
+                Style="width: 100%; min-height: 80px;" />
+        </RadzenFormField>
+    </RadzenStack>
+
+    <!-- Dialog Actions -->
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem" Style="margin-top: 1rem;">
+        <RadzenButton Text="Cancel" Click="@Cancel" ButtonStyle="ButtonStyle.Light" />
+        <RadzenButton Text="@(IsEdit ? "Update" : "Create")" ButtonType="ButtonType.Submit" 
+            ButtonStyle="ButtonStyle.Primary" IsBusy="@saving" />
+    </RadzenStack>
+</RadzenTemplateForm>
+
