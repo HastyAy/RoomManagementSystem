@@ -2,9 +2,7 @@
 using RoomManager.RoomService.Application.Ports;
 using RoomManager.RoomService.Domain.Entities;
 using RoomManager.RoomService.Domain.Exceptions;
-using RoomManager.RoomService.Domain.ValueObjects;
 using RoomManager.Shared.DTOs.RoomDto;
-using System.Xml.Linq;
 
 namespace RoomManager.RoomService.Application.Services
 {
@@ -12,6 +10,12 @@ namespace RoomManager.RoomService.Application.Services
     {
         private readonly IRoomRepository _roomRepository;
         private readonly ILogger<RoomService> _logger;
+
+        // Valid room types
+        private static readonly HashSet<string> ValidTypes = new()
+        {
+            "Conference", "Classroom", "Lab", "Study", "Meeting", "Auditorium", "Office"
+        };
 
         public RoomService(IRoomRepository roomRepository, ILogger<RoomService> logger)
         {
@@ -43,8 +47,12 @@ namespace RoomManager.RoomService.Application.Services
         {
             _logger.LogInformation("Getting rooms by type: {Type}", type);
 
-            var roomType = RoomType.Create(type); // Validates type
-            var rooms = await _roomRepository.GetByTypeAsync(roomType);
+            if (!IsValidRoomType(type))
+            {
+                throw new InvalidRoomDataException($"Invalid room type: {type}");
+            }
+
+            var rooms = await _roomRepository.GetByTypeAsync(type);
             return rooms.Select(MapToSharedDto).ToList();
         }
 
@@ -63,50 +71,82 @@ namespace RoomManager.RoomService.Application.Services
 
         public async Task<RoomDto> CreateRoomAsync(CreateRoomCommand command)
         {
-            _logger.LogInformation("Creating new room: {Name}", command.Name);
+            _logger.LogInformation("Creating new room: {Name} with type: {Type}", command.Name, command.Type);
 
-            // Validate uniqueness
-            if (!await _roomRepository.IsNameUniqueAsync(command.Name))
+            try
             {
-                throw new RoomNameAlreadyExistsException(command.Name);
+                // Validate inputs
+                ValidateRoomCommand(command);
+
+                // Validate uniqueness
+                if (!await _roomRepository.IsNameUniqueAsync(command.Name))
+                {
+                    _logger.LogWarning("Room name already exists: {Name}", command.Name);
+                    throw new RoomNameAlreadyExistsException(command.Name);
+                }
+
+                var room = new Room(
+                    name: command.Name,
+                    capacity: command.Capacity,
+                    type: command.Type, // Direct string assignment
+                    location: command.Location,
+                    description: command.Description
+                );
+
+                // Persist
+                var savedRoom = await _roomRepository.AddAsync(room);
+
+                _logger.LogInformation("Room created successfully with ID: {RoomId}", savedRoom.Id);
+                return MapToSharedDto(savedRoom);
             }
-
-            // Create domain entity
-            var roomType = RoomType.Create(command.Type);
-            var room = new Room(command.Name, command.Capacity, roomType, command.Location, command.Description);
-
-            // Persist
-            var savedRoom = await _roomRepository.AddAsync(room);
-
-            _logger.LogInformation("Room created successfully with ID: {RoomId}", savedRoom.Id);
-            return MapToSharedDto(savedRoom);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to create room: {Name}", command.Name);
+                throw;
+            }
         }
 
         public async Task<RoomDto> UpdateRoomAsync(Guid id, UpdateRoomCommand command)
         {
             _logger.LogInformation("Updating room with ID: {RoomId}", id);
 
-            var room = await _roomRepository.GetByIdAsync(id);
-            if (room == null || !room.IsActive)
+            try
             {
-                throw new RoomNotFoundException(id);
-            }
+                var room = await _roomRepository.GetByIdAsync(id);
+                if (room == null || !room.IsActive)
+                {
+                    throw new RoomNotFoundException(id);
+                }
 
-            // Validate uniqueness
-            if (!await _roomRepository.IsNameUniqueAsync(command.Name, id))
+                // Validate inputs
+                ValidateRoomCommand(command);
+
+                // Validate uniqueness
+                if (!await _roomRepository.IsNameUniqueAsync(command.Name, id))
+                {
+                    throw new RoomNameAlreadyExistsException(command.Name);
+                }
+
+                // Update domain entity - DIRECTLY with string type
+                room.UpdateDetails(
+                    name: command.Name,
+                    capacity: command.Capacity,
+                    type: command.Type, // Direct string assignment
+                    location: command.Location,
+                    description: command.Description
+                );
+
+                // Persist
+                var updatedRoom = await _roomRepository.UpdateAsync(room);
+
+                _logger.LogInformation("Room updated successfully: {RoomId}", id);
+                return MapToSharedDto(updatedRoom);
+            }
+            catch (Exception ex)
             {
-                throw new RoomNameAlreadyExistsException(command.Name);
+                _logger.LogError(ex, "Failed to update room: {RoomId}", id);
+                throw;
             }
-
-            // Update domain entity
-            var roomType = RoomType.Create(command.Type);
-            room.UpdateDetails(command.Name, command.Capacity, roomType, command.Location, command.Description);
-
-            // Persist
-            var updatedRoom = await _roomRepository.UpdateAsync(room);
-
-            _logger.LogInformation("Room updated successfully: {RoomId}", id);
-            return MapToSharedDto(updatedRoom);
         }
 
         public async Task DeleteRoomAsync(Guid id)
@@ -123,6 +163,23 @@ namespace RoomManager.RoomService.Application.Services
             _logger.LogInformation("Room deleted successfully: {RoomId}", id);
         }
 
+        private static void ValidateRoomCommand(dynamic command)
+        {
+            if (string.IsNullOrWhiteSpace(command.Name))
+                throw new InvalidRoomDataException("Room name is required");
+
+            if (command.Capacity <= 0)
+                throw new InvalidRoomDataException("Room capacity must be greater than 0");
+
+            if (!IsValidRoomType(command.Type))
+                throw new InvalidRoomDataException($"Invalid room type: {command.Type}. Valid types: {string.Join(", ", ValidTypes)}");
+        }
+
+        private static bool IsValidRoomType(string type)
+        {
+            return !string.IsNullOrWhiteSpace(type) && ValidTypes.Contains(type);
+        }
+
         private static RoomDto MapToSharedDto(Room room)
         {
             return new RoomDto
@@ -130,7 +187,7 @@ namespace RoomManager.RoomService.Application.Services
                 Id = room.Id,
                 Name = room.Name,
                 Capacity = room.Capacity,
-                Type = room.Type, 
+                Type = room.Type,
                 Location = room.Location,
                 Description = room.Description
             };

@@ -12,7 +12,7 @@ public static class ContextRegistration
         builder.Services.AddDbContext<BookingDbContext>(options =>
             options.UseMySql(
                 conn,
-                new MySqlServerVersion(new Version(8, 0, 42)), 
+                new MySqlServerVersion(new Version(9, 3, 0)), 
                 mySqlOptions => mySqlOptions.EnableRetryOnFailure(
                     maxRetryCount: 10,
                     maxRetryDelay: TimeSpan.FromSeconds(30),

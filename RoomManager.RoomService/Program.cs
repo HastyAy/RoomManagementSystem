@@ -1,13 +1,19 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
-using RoomManager.RoomService.Infrastructure;
 using RoomManager.RoomService.Infrastructure.Persistence;
 using System.Reflection;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
+using System.Diagnostics.Metrics;
+using RoomManager.RoomService.Infrastructure;
 
 namespace RoomManager.RoomService
 {
     public class Program
     {
+        // Custom metrics
+        private static readonly Meter Meter = new("RoomService");
+        private static readonly Counter<long> RequestCounter = Meter.CreateCounter<long>("http_requests_total");
+
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
@@ -19,14 +25,23 @@ namespace RoomManager.RoomService
                 .AddJsonFile($"appsettings.{env}.json", optional: true)
                 .AddEnvironmentVariables();
 
-            // ConnectionString aus Config holen (jetzt auch aus ENV möglich)
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-            // Services registrieren - Use fixed server version to avoid early connection
+            // Add OpenTelemetry - Minimale Version
+            builder.Services.AddOpenTelemetry()
+                .WithMetrics(metrics =>
+                {
+                    metrics
+                        .AddMeter("RoomService")
+                        .AddAspNetCoreInstrumentation()
+                        .AddPrometheusExporter();
+                });
+
+            // Services registrieren
             builder.Services.AddDbContext<RoomDbContext>(options =>
                 options.UseMySql(
                     connectionString,
-                    new MySqlServerVersion(new Version(8, 0, 42)), // Use fixed version instead of AutoDetect
+                    new MySqlServerVersion(new Version(9, 3, 0)),
                     mySqlOptions => mySqlOptions.EnableRetryOnFailure(
                         maxRetryCount: 10,
                         maxRetryDelay: TimeSpan.FromSeconds(30),
@@ -39,20 +54,18 @@ namespace RoomManager.RoomService
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
 
+            // Simple health checks
+            builder.Services.AddHealthChecks()
+                .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy());
+
             // Swagger
             builder.Services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo
+                c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
                 {
                     Title = "Room Management API",
-                    Version = "v1",
-                    Description = GetApiDescription(builder.Environment.ContentRootPath)
+                    Version = "v1"
                 });
-
-                var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-                var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-                if (File.Exists(xmlPath))
-                    c.IncludeXmlComments(xmlPath);
             });
 
             // CORS
@@ -66,54 +79,27 @@ namespace RoomManager.RoomService
 
             var app = builder.Build();
 
-            // Middleware
-            if (app.Environment.IsDevelopment())
+            // Configure pipeline
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
             {
-                app.UseSwagger();
-                app.UseSwaggerUI(c =>
-                {
-                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Auto-Generated API");
-                    c.SwaggerEndpoint("/api-docs/openapi.yaml", "Manual OpenAPI Spec");
-                });
-            }
-            else
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI(c =>
-                {
-                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Room Management API");
-                    c.RoutePrefix = "swagger";
-                });
-            }
-
-            app.MapGet("/api-docs/openapi.yaml", () =>
-            {
-                var specPath = Path.Combine(app.Environment.ContentRootPath, "docs", "openapi.yaml");
-                return File.Exists(specPath)
-                    ? Results.File(specPath, "application/x-yaml", "openapi.yaml")
-                    : Results.NotFound();
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Room Management API");
+                c.RoutePrefix = "swagger";
             });
 
+            // Add Prometheus metrics endpoint
+            app.MapPrometheusScrapingEndpoint();
+
+            // Add health check endpoints
+            app.MapHealthChecks("/health");
+            app.MapHealthChecks("/health/ready");
+
             app.UseCors();
-            app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
 
             ApplyDatabaseMigrations(app);
             app.Run();
-        }
-
-        private static string GetApiDescription(string contentRootPath)
-        {
-            try
-            {
-                var readmePath = Path.Combine(contentRootPath, "docs", "README.md");
-                if (File.Exists(readmePath))
-                    return File.ReadAllText(readmePath);
-            }
-            catch { }
-
-            return "API for managing rooms in the Room Management System using Hexagonal Architecture.";
         }
 
         private static void ApplyDatabaseMigrations(WebApplication app)
@@ -132,7 +118,6 @@ namespace RoomManager.RoomService
                 {
                     logger.LogInformation($"Attempting to connect to database (attempt {retryCount + 1}/{maxRetries})...");
 
-                    // Test connection first
                     if (dbContext.Database.CanConnect())
                     {
                         logger.LogInformation("Database connection established. Applying migrations...");
@@ -152,7 +137,7 @@ namespace RoomManager.RoomService
 
                     if (retryCount >= maxRetries)
                     {
-                        logger.LogError(ex, "Max retry attempts reached. An error occurred while applying Room Service database migrations.");
+                        logger.LogError(ex, "Max retry attempts reached.");
                         if (app.Environment.IsDevelopment())
                         {
                             throw;

@@ -46,6 +46,7 @@ namespace RoomManager.RoomService.Infrastructure.Persistence
                 .OrderBy(r => r.Capacity)
                 .ToListAsync();
         }
+/// <inheritdoc/>
 
         public async Task<Room> AddAsync(Room room)
         {

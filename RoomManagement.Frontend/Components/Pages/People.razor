@@ -115,7 +115,9 @@
                             </RadzenDataGridColumn>
                             <RadzenDataGridColumn TItem="StudentDto" Property="@nameof(StudentDto.Email)" Title="Email" Width="200px">
                                 <Template Context="student">
-                                    <RadzenLink Text="@student.Email" Path="@($"mailto:{student.Email}")" Target="_blank" />
+                                    <a href="mailto:@student.Email" target="_blank" style="color: #3b82f6; text-decoration: none;">
+                                        @student.Email
+                                    </a>
                                 </Template>
                             </RadzenDataGridColumn>
                             <RadzenDataGridColumn TItem="StudentDto" Property="@nameof(StudentDto.FullName)" Title="Full Name" Width="180px" />
