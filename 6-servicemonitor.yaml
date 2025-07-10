@@ -1,0 +1,21 @@
+# 6-servicemonitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: roomservice-monitor
+  namespace: room-management
+  labels:
+    app: roomservice
+    release: prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: roomservice
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+  namespaceSelector:
+    matchNames:
+    - room-management
