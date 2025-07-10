@@ -15,7 +15,7 @@ namespace RoomManagement.Frontend
             // Load the appropriate appsettings file
             builder.Configuration
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true);
+                .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true).AddEnvironmentVariables();
 
             builder.Services.AddRadzenComponents();
 

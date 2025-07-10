@@ -12,17 +12,34 @@ namespace RoomManager.RoomService
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Configuration
+            var env = builder.Environment.EnvironmentName;
+
+            builder.Configuration
+                .AddJsonFile("appsettings.json")
+                .AddJsonFile($"appsettings.{env}.json", optional: true)
+                .AddEnvironmentVariables();
+
+            // ConnectionString aus Config holen (jetzt auch aus ENV möglich)
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
-            // Add services
-            builder.Services.AddRoomDatabase(connectionString!);
-            builder.Services.AddRoomService();
+            // Services registrieren - Use fixed server version to avoid early connection
+            builder.Services.AddDbContext<RoomDbContext>(options =>
+                options.UseMySql(
+                    connectionString,
+                    new MySqlServerVersion(new Version(8, 0, 42)), // Use fixed version instead of AutoDetect
+                    mySqlOptions => mySqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 10,
+                        maxRetryDelay: TimeSpan.FromSeconds(30),
+                        errorNumbersToAdd: null
+                    )
+                )
+            );
 
+            builder.Services.AddRoomService();
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
 
-            // Swagger/OpenAPI Configuration
+            // Swagger
             builder.Services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo
@@ -32,13 +49,10 @@ namespace RoomManager.RoomService
                     Description = GetApiDescription(builder.Environment.ContentRootPath)
                 });
 
-                // Include XML comments for documentation
                 var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
                 var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
                 if (File.Exists(xmlPath))
-                {
                     c.IncludeXmlComments(xmlPath);
-                }
             });
 
             // CORS
@@ -46,15 +60,13 @@ namespace RoomManager.RoomService
             {
                 options.AddDefaultPolicy(policy =>
                 {
-                    policy.AllowAnyOrigin()
-                          .AllowAnyMethod()
-                          .AllowAnyHeader();
+                    policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
                 });
             });
 
             var app = builder.Build();
 
-            // Configure pipeline - RICHTIGE REIHENFOLGE!
+            // Middleware
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
@@ -66,16 +78,14 @@ namespace RoomManager.RoomService
             }
             else
             {
-                // Optional: Swagger auch in Production (für Docker)
                 app.UseSwagger();
                 app.UseSwaggerUI(c =>
                 {
                     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Room Management API");
-                    c.RoutePrefix = "swagger"; // Swagger UI unter /swagger
+                    c.RoutePrefix = "swagger";
                 });
             }
 
-            // Custom endpoint für statische OpenAPI Spec - VOR UseRouting!
             app.MapGet("/api-docs/openapi.yaml", () =>
             {
                 var specPath = Path.Combine(app.Environment.ContentRootPath, "docs", "openapi.yaml");
@@ -84,66 +94,78 @@ namespace RoomManager.RoomService
                     : Results.NotFound();
             });
 
-            // Middleware Pipeline - KORREKTE REIHENFOLGE
-            app.UseCors(); // CORS zuerst
-            app.UseAuthentication(); // Falls später Authentication hinzugefügt wird
+            app.UseCors();
+            app.UseAuthentication();
             app.UseAuthorization();
-
-            // Controllers mapping
             app.MapControllers();
 
-            // Database migration - NACH app.Build(), VOR app.Run()
             ApplyDatabaseMigrations(app);
-
             app.Run();
         }
 
-        // Helper method für API Description
         private static string GetApiDescription(string contentRootPath)
         {
             try
             {
                 var readmePath = Path.Combine(contentRootPath, "docs", "README.md");
                 if (File.Exists(readmePath))
-                {
                     return File.ReadAllText(readmePath);
-                }
             }
-            catch (Exception)
-            {
-                // Fallback description falls README nicht gefunden
-            }
+            catch { }
 
             return "API for managing rooms in the Room Management System using Hexagonal Architecture.";
         }
 
-        // Separate method für Database Migrations
         private static void ApplyDatabaseMigrations(WebApplication app)
         {
             using var scope = app.Services.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<RoomDbContext>();
             var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-            try
-            {
-                logger.LogInformation("Applying Room Service database migrations...");
-                dbContext.Database.Migrate();
-                logger.LogInformation("Room Service database migrations applied successfully.");
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "An error occurred while applying Room Service database migrations.");
+            var retryCount = 0;
+            const int maxRetries = 20;
+            const int delayMs = 5000;
 
-                // In Development: Exception werfen
-                // In Production: Möglicherweise graceful degradation
-                if (app.Environment.IsDevelopment())
+            while (retryCount < maxRetries)
+            {
+                try
                 {
-                    throw;
+                    logger.LogInformation($"Attempting to connect to database (attempt {retryCount + 1}/{maxRetries})...");
+
+                    // Test connection first
+                    if (dbContext.Database.CanConnect())
+                    {
+                        logger.LogInformation("Database connection established. Applying migrations...");
+                        dbContext.Database.Migrate();
+                        logger.LogInformation("Room Service database migrations applied successfully.");
+                        return;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Cannot connect to database");
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    logger.LogCritical("Application starting without database migrations applied!");
-                    // Optional: Hier könnten Sie entscheiden, ob die App trotzdem starten soll
+                    retryCount++;
+                    logger.LogWarning($"Migration attempt {retryCount} failed: {ex.Message}");
+
+                    if (retryCount >= maxRetries)
+                    {
+                        logger.LogError(ex, "Max retry attempts reached. An error occurred while applying Room Service database migrations.");
+                        if (app.Environment.IsDevelopment())
+                        {
+                            throw;
+                        }
+                        else
+                        {
+                            logger.LogCritical("Application starting without database migrations applied!");
+                            return;
+                        }
+                    }
+
+                    logger.LogInformation($"Retrying in {delayMs}ms...");
+                    Thread.Sleep(delayMs);
                 }
             }
         }

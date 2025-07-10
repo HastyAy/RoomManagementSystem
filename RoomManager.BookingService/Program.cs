@@ -13,7 +13,7 @@ namespace RoomManager.BookingService
             var env = builder.Environment.EnvironmentName;
             builder.Configuration
                 .AddJsonFile("appsettings.json")
-                .AddJsonFile($"appsettings.{env}.json", optional: true);
+                .AddJsonFile($"appsettings.{env}.json", optional: true).AddEnvironmentVariables(); 
 
             // Add services
             builder.AddBookingDataSource();

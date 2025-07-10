@@ -12,8 +12,8 @@ using RoomManager.RoomService.Infrastructure.Persistence;
 namespace RoomManager.RoomService.Migrations
 {
     [DbContext(typeof(RoomDbContext))]
-    [Migration("20250710074200_UpdateToHexagonalArchitecture")]
-    partial class UpdateToHexagonalArchitecture
+    [Migration("20250710122221_FixedRoomConfiguration")]
+    partial class FixedRoomConfiguration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -37,7 +37,7 @@ namespace RoomManager.RoomService.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime(6)")
-                        .HasDefaultValueSql("UTC_TIMESTAMP()");
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
@@ -77,7 +77,7 @@ namespace RoomManager.RoomService.Migrations
 
                     b.HasIndex("Type");
 
-                    b.ToTable("Rooms");
+                    b.ToTable("Rooms", (string)null);
                 });
 #pragma warning restore 612, 618
         }

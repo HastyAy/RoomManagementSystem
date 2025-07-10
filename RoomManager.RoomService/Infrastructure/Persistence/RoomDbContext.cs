@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using RoomManager.RoomService.Domain.Entities;
-using RoomManager.RoomService.Domain.ValueObjects;
 
 namespace RoomManager.RoomService.Infrastructure.Persistence
 {
@@ -16,23 +15,26 @@ namespace RoomManager.RoomService.Infrastructure.Persistence
             {
                 entity.HasKey(e => e.Id);
 
+                entity.Property(e => e.Id)
+                    .HasColumnType("char(36)")
+                    .IsRequired();
+
                 entity.Property(e => e.Name)
                     .IsRequired()
                     .HasMaxLength(100);
 
                 entity.Property(e => e.Type)
                     .IsRequired()
-                    .HasMaxLength(50)
-                    .HasConversion(
-                        v => v,  // To database
-                        v => RoomType.Create(v) // From database
-                    );
+                    .HasMaxLength(50);
+                // Removed the conversion since Room.Type is a string, not RoomType value object
 
                 entity.Property(e => e.Location)
-                    .HasMaxLength(200);
+                    .HasMaxLength(200)
+                    .IsRequired(false);
 
                 entity.Property(e => e.Description)
-                    .HasMaxLength(500);
+                    .HasMaxLength(500)
+                    .IsRequired(false);
 
                 entity.Property(e => e.Capacity)
                     .IsRequired();
@@ -42,10 +44,12 @@ namespace RoomManager.RoomService.Infrastructure.Persistence
                     .HasDefaultValue(true);
 
                 entity.Property(e => e.CreatedAt)
+                    .HasColumnType("datetime(6)")
                     .IsRequired()
-                    .HasDefaultValueSql("UTC_TIMESTAMP()");
+                    .HasDefaultValueSql("CURRENT_TIMESTAMP(6)"); // Fixed MySQL syntax
 
                 entity.Property(e => e.UpdatedAt)
+                    .HasColumnType("datetime(6)")
                     .IsRequired(false);
 
                 // Indexes
@@ -57,6 +61,9 @@ namespace RoomManager.RoomService.Infrastructure.Persistence
                 entity.HasIndex(e => e.IsActive);
                 entity.HasIndex(e => e.Capacity);
             });
+
+            // Configure table name and charset for MySQL
+            modelBuilder.Entity<Room>().ToTable("Rooms");
         }
     }
 }

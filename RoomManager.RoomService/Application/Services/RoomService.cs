@@ -130,7 +130,7 @@ namespace RoomManager.RoomService.Application.Services
                 Id = room.Id,
                 Name = room.Name,
                 Capacity = room.Capacity,
-                Type = room.Type, // RoomType wird implizit zu string konvertiert
+                Type = room.Type, 
                 Location = room.Location,
                 Description = room.Description
             };
