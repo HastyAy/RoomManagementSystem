@@ -1,0 +1,763 @@
+openapi: 3.1.0
+info:
+  title: Room Management API
+  description: |
+    API for managing rooms in the Room Management System using Hexagonal Architecture.
+    
+    This API provides comprehensive room management functionality including:
+    - CRUD operations for rooms
+    - Search and filtering capabilities
+    - Type-based room categorization
+    - Capacity-based room filtering
+    
+    ## Architecture
+    This service follows the Hexagonal Architecture pattern with:
+    - **Domain Layer**: Core business logic and entities
+    - **Application Layer**: Use cases and ports
+    - **Infrastructure Layer**: Database adapters
+    - **Web Layer**: REST API controllers
+    
+    ## Room Types
+    The following room types are supported:
+    - Conference
+    - Classroom
+    - Lab
+    - Study
+    - Meeting
+    - Auditorium
+    - Office
+    
+  version: 1.0.0
+  contact:
+    name: Room Management Team
+    email: support@roommanagement.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:5001/api
+    description: Development server
+  - url: https://api.roommanagement.com/room/api
+    description: Production server
+
+tags:
+  - name: rooms
+    description: Room management operations
+  - name: search
+    description: Room search and filtering operations
+
+paths:
+  /room:
+    get:
+      tags:
+        - rooms
+      summary: Get all active rooms
+      description: Retrieves a list of all active rooms in the system
+      operationId: getAllRooms
+      responses:
+        '200':
+          description: Successfully retrieved all rooms
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomListResponse'
+              examples:
+                success:
+                  summary: Successful response with rooms
+                  value:
+                    success: true
+                    message: "Rooms retrieved successfully"
+                    data:
+                      - id: "123e4567-e89b-12d3-a456-426614174000"
+                        name: "Conference Room A"
+                        capacity: 20
+                        type: "Conference"
+                        location: "Building 1, Floor 2"
+                        description: "Large conference room with AV equipment"
+                        isActive: true
+                        createdAt: "2024-01-15T10:30:00Z"
+                        updatedAt: null
+                      - id: "123e4567-e89b-12d3-a456-426614174001"
+                        name: "Lab 101"
+                        capacity: 30
+                        type: "Lab"
+                        location: "Building 2, Floor 1"
+                        description: "Computer lab with 30 workstations"
+                        isActive: true
+                        createdAt: "2024-01-15T11:00:00Z"
+                        updatedAt: "2024-01-16T09:15:00Z"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - rooms
+      summary: Create a new room
+      description: Creates a new room with the provided details
+      operationId: createRoom
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoomRequest'
+            examples:
+              conference_room:
+                summary: Conference room example
+                value:
+                  name: "Executive Boardroom"
+                  capacity: 15
+                  type: "Conference"
+                  location: "Building 1, Floor 3"
+                  description: "Executive boardroom with video conferencing"
+              classroom:
+                summary: Classroom example
+                value:
+                  name: "Classroom 205"
+                  capacity: 40
+                  type: "Classroom"
+                  location: "Academic Building, Floor 2"
+                  description: "Standard classroom with projector"
+      responses:
+        '201':
+          description: Room created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomResponse'
+              examples:
+                created:
+                  summary: Successfully created room
+                  value:
+                    success: true
+                    message: "Room created successfully"
+                    data:
+                      id: "123e4567-e89b-12d3-a456-426614174002"
+                      name: "Executive Boardroom"
+                      capacity: 15
+                      type: "Conference"
+                      location: "Building 1, Floor 3"
+                      description: "Executive boardroom with video conferencing"
+                      isActive: true
+                      createdAt: "2024-01-20T14:30:00Z"
+                      updatedAt: null
+        '400':
+          description: Bad request - validation error or room name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                name_exists:
+                  summary: Room name already exists
+                  value:
+                    success: false
+                    message: "Room with name 'Executive Boardroom' already exists"
+                    data: null
+                invalid_type:
+                  summary: Invalid room type
+                  value:
+                    success: false
+                    message: "Invalid room type: InvalidType"
+                    data: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /room/{id}:
+    get:
+      tags:
+        - rooms
+      summary: Get room by ID
+      description: Retrieves a specific room by its unique identifier
+      operationId: getRoomById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The unique identifier of the room
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        '200':
+          description: Room found and returned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomResponse'
+              examples:
+                found:
+                  summary: Room found
+                  value:
+                    success: true
+                    message: "Room retrieved successfully"
+                    data:
+                      id: "123e4567-e89b-12d3-a456-426614174000"
+                      name: "Conference Room A"
+                      capacity: 20
+                      type: "Conference"
+                      location: "Building 1, Floor 2"
+                      description: "Large conference room with AV equipment"
+                      isActive: true
+                      createdAt: "2024-01-15T10:30:00Z"
+                      updatedAt: null
+        '404':
+          description: Room not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                not_found:
+                  summary: Room not found
+                  value:
+                    success: false
+                    message: "Room with ID 123e4567-e89b-12d3-a456-426614174000 was not found"
+                    data: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - rooms
+      summary: Update room
+      description: Updates an existing room with new details
+      operationId: updateRoom
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The unique identifier of the room to update
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoomRequest'
+            examples:
+              update_capacity:
+                summary: Update room capacity
+                value:
+                  name: "Conference Room A"
+                  capacity: 25
+                  type: "Conference"
+                  location: "Building 1, Floor 2"
+                  description: "Large conference room with AV equipment - expanded capacity"
+      responses:
+        '200':
+          description: Room updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomResponse'
+              examples:
+                updated:
+                  summary: Successfully updated room
+                  value:
+                    success: true
+                    message: "Room updated successfully"
+                    data:
+                      id: "123e4567-e89b-12d3-a456-426614174000"
+                      name: "Conference Room A"
+                      capacity: 25
+                      type: "Conference"
+                      location: "Building 1, Floor 2"
+                      description: "Large conference room with AV equipment - expanded capacity"
+                      isActive: true
+                      createdAt: "2024-01-15T10:30:00Z"
+                      updatedAt: "2024-01-20T16:45:00Z"
+        '400':
+          description: Bad request - validation error or room name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Room not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - rooms
+      summary: Delete room
+      description: Soft deletes a room (sets isActive to false)
+      operationId: deleteRoom
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The unique identifier of the room to delete
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        '200':
+          description: Room deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                deleted:
+                  summary: Successfully deleted room
+                  value:
+                    success: true
+                    message: "Room deleted successfully"
+                    data: null
+        '404':
+          description: Room not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /room/type/{type}:
+    get:
+      tags:
+        - search
+      summary: Get rooms by type
+      description: Retrieves all active rooms of a specific type
+      operationId: getRoomsByType
+      parameters:
+        - name: type
+          in: path
+          required: true
+          description: The type of rooms to retrieve
+          schema:
+            $ref: '#/components/schemas/RoomType'
+          example: "Conference"
+      responses:
+        '200':
+          description: Rooms retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomListResponse'
+              examples:
+                conference_rooms:
+                  summary: Conference rooms found
+                  value:
+                    success: true
+                    message: "Rooms retrieved successfully"
+                    data:
+                      - id: "123e4567-e89b-12d3-a456-426614174000"
+                        name: "Conference Room A"
+                        capacity: 20
+                        type: "Conference"
+                        location: "Building 1, Floor 2"
+                        description: "Large conference room with AV equipment"
+                        isActive: true
+                        createdAt: "2024-01-15T10:30:00Z"
+                        updatedAt: null
+                      - id: "123e4567-e89b-12d3-a456-426614174002"
+                        name: "Executive Boardroom"
+                        capacity: 15
+                        type: "Conference"
+                        location: "Building 1, Floor 3"
+                        description: "Executive boardroom with video conferencing"
+                        isActive: true
+                        createdAt: "2024-01-20T14:30:00Z"
+                        updatedAt: null
+        '400':
+          description: Invalid room type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_type:
+                  summary: Invalid room type
+                  value:
+                    success: false
+                    message: "Invalid room type: InvalidType"
+                    data: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /room/capacity/{minCapacity}:
+    get:
+      tags:
+        - search
+      summary: Get rooms by minimum capacity
+      description: Retrieves all active rooms with at least the specified capacity
+      operationId: getRoomsByCapacity
+      parameters:
+        - name: minCapacity
+          in: path
+          required: true
+          description: The minimum capacity required
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+          example: 20
+      responses:
+        '200':
+          description: Rooms retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomListResponse'
+              examples:
+                large_rooms:
+                  summary: Rooms with capacity 20 or more
+                  value:
+                    success: true
+                    message: "Rooms retrieved successfully"
+                    data:
+                      - id: "123e4567-e89b-12d3-a456-426614174000"
+                        name: "Conference Room A"
+                        capacity: 25
+                        type: "Conference"
+                        location: "Building 1, Floor 2"
+                        description: "Large conference room with AV equipment"
+                        isActive: true
+                        createdAt: "2024-01-15T10:30:00Z"
+                        updatedAt: "2024-01-20T16:45:00Z"
+                      - id: "123e4567-e89b-12d3-a456-426614174001"
+                        name: "Lab 101"
+                        capacity: 30
+                        type: "Lab"
+                        location: "Building 2, Floor 1"
+                        description: "Computer lab with 30 workstations"
+                        isActive: true
+                        createdAt: "2024-01-15T11:00:00Z"
+                        updatedAt: "2024-01-16T09:15:00Z"
+        '400':
+          description: Invalid capacity value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_capacity:
+                  summary: Invalid capacity
+                  value:
+                    success: false
+                    message: "Minimum capacity must be positive"
+                    data: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Room:
+      type: object
+      description: A room entity in the system
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the room
+          example: "123e4567-e89b-12d3-a456-426614174000"
+          readOnly: true
+        name:
+          type: string
+          description: The name of the room (must be unique)
+          minLength: 1
+          maxLength: 100
+          example: "Conference Room A"
+        capacity:
+          type: integer
+          description: The maximum number of people the room can accommodate
+          minimum: 1
+          maximum: 1000
+          example: 20
+        type:
+          $ref: '#/components/schemas/RoomType'
+        location:
+          type: string
+          description: The physical location of the room
+          maxLength: 200
+          nullable: true
+          example: "Building 1, Floor 2"
+        description:
+          type: string
+          description: Additional details about the room
+          maxLength: 500
+          nullable: true
+          example: "Large conference room with AV equipment"
+        isActive:
+          type: boolean
+          description: Whether the room is currently active
+          example: true
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          description: When the room was created
+          example: "2024-01-15T10:30:00Z"
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the room was last updated
+          nullable: true
+          example: "2024-01-20T16:45:00Z"
+          readOnly: true
+      required:
+        - id
+        - name
+        - capacity
+        - type
+        - isActive
+        - createdAt
+
+    RoomType:
+      type: string
+      description: The type/category of the room
+      enum:
+        - Conference
+        - Classroom
+        - Lab
+        - Study
+        - Meeting
+        - Auditorium
+        - Office
+      example: "Conference"
+
+    CreateRoomRequest:
+      type: object
+      description: Request payload for creating a new room
+      properties:
+        name:
+          type: string
+          description: The name of the room (must be unique)
+          minLength: 1
+          maxLength: 100
+          example: "Conference Room A"
+        capacity:
+          type: integer
+          description: The maximum number of people the room can accommodate
+          minimum: 1
+          maximum: 1000
+          example: 20
+        type:
+          $ref: '#/components/schemas/RoomType'
+        location:
+          type: string
+          description: The physical location of the room
+          maxLength: 200
+          nullable: true
+          example: "Building 1, Floor 2"
+        description:
+          type: string
+          description: Additional details about the room
+          maxLength: 500
+          nullable: true
+          example: "Large conference room with AV equipment"
+      required:
+        - name
+        - capacity
+        - type
+
+    UpdateRoomRequest:
+      type: object
+      description: Request payload for updating an existing room
+      properties:
+        name:
+          type: string
+          description: The name of the room (must be unique)
+          minLength: 1
+          maxLength: 100
+          example: "Conference Room A"
+        capacity:
+          type: integer
+          description: The maximum number of people the room can accommodate
+          minimum: 1
+          maximum: 1000
+          example: 20
+        type:
+          $ref: '#/components/schemas/RoomType'
+        location:
+          type: string
+          description: The physical location of the room
+          maxLength: 200
+          nullable: true
+          example: "Building 1, Floor 2"
+        description:
+          type: string
+          description: Additional details about the room
+          maxLength: 500
+          nullable: true
+          example: "Large conference room with AV equipment"
+      required:
+        - name
+        - capacity
+        - type
+
+    ServiceResponse:
+      type: object
+      description: Generic service response wrapper
+      properties:
+        success:
+          type: boolean
+          description: Indicates if the operation was successful
+          example: true
+        message:
+          type: string
+          description: Human-readable message describing the result
+          example: "Operation completed successfully"
+        data:
+          description: The actual response data (type varies by endpoint)
+          nullable: true
+      required:
+        - success
+        - message
+
+    RoomResponse:
+      allOf:
+        - $ref: '#/components/schemas/ServiceResponse'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Room'
+
+    RoomListResponse:
+      allOf:
+        - $ref: '#/components/schemas/ServiceResponse'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Room'
+
+    SuccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ServiceResponse'
+        - type: object
+          properties:
+            data:
+              type: object
+              nullable: true
+
+    ErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/ServiceResponse'
+        - type: object
+          properties:
+            success:
+              type: boolean
+              example: false
+            data:
+              type: object
+              nullable: true
+              example: null
+
+    ValidationError:
+      type: object
+      description: Validation error details
+      properties:
+        field:
+          type: string
+          description: The field that failed validation
+          example: "name"
+        message:
+          type: string
+          description: The validation error message
+          example: "Name is required"
+        code:
+          type: string
+          description: Error code for programmatic handling
+          example: "REQUIRED_FIELD"
+
+  examples:
+    ConferenceRoom:
+      summary: Conference Room Example
+      description: A typical conference room setup
+      value:
+        id: "123e4567-e89b-12d3-a456-426614174000"
+        name: "Executive Boardroom"
+        capacity: 15
+        type: "Conference"
+        location: "Building 1, Floor 3"
+        description: "Executive boardroom with video conferencing capabilities"
+        isActive: true
+        createdAt: "2024-01-15T10:30:00Z"
+        updatedAt: null
+
+    Classroom:
+      summary: Classroom Example
+      description: A standard classroom setup
+      value:
+        id: "123e4567-e89b-12d3-a456-426614174001"
+        name: "Classroom 205"
+        capacity: 40
+        type: "Classroom"
+        location: "Academic Building, Floor 2"
+        description: "Standard classroom with projector and whiteboard"
+        isActive: true
+        createdAt: "2024-01-15T11:00:00Z"
+        updatedAt: "2024-01-16T09:15:00Z"
+
+    ComputerLab:
+      summary: Computer Lab Example
+      description: A computer lab with workstations
+      value:
+        id: "123e4567-e89b-12d3-a456-426614174002"
+        name: "Computer Lab 101"
+        capacity: 30
+        type: "Lab"
+        location: "Technology Building, Floor 1"
+        description: "Computer lab with 30 workstations and specialized software"
+        isActive: true
+        createdAt: "2024-01-15T12:00:00Z"
+        updatedAt: null
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authentication
+
+security:
+  - BearerAuth: []
+
+# Additional metadata
+externalDocs:
+  description: Room Management System Documentation
+  url: https://docs.roommanagement.com

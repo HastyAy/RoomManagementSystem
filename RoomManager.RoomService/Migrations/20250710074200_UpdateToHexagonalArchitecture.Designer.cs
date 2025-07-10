@@ -5,15 +5,15 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using RoomManager.RoomService.Context;
+using RoomManager.RoomService.Infrastructure.Persistence;
 
 #nullable disable
 
 namespace RoomManager.RoomService.Migrations
 {
     [DbContext(typeof(RoomDbContext))]
-    [Migration("20250709101822_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250710074200_UpdateToHexagonalArchitecture")]
+    partial class UpdateToHexagonalArchitecture
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,7 +25,7 @@ namespace RoomManager.RoomService.Migrations
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
 
-            modelBuilder.Entity("RoomManager.RoomService.Entities.Room", b =>
+            modelBuilder.Entity("RoomManager.RoomService.Domain.Entities.Room", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -35,14 +35,18 @@ namespace RoomManager.RoomService.Migrations
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime(6)")
+                        .HasDefaultValueSql("UTC_TIMESTAMP()");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
                         .HasColumnType("varchar(500)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("tinyint(1)");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("tinyint(1)")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("Location")
                         .HasMaxLength(200)
@@ -63,10 +67,13 @@ namespace RoomManager.RoomService.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Capacity");
+
                     b.HasIndex("IsActive");
 
                     b.HasIndex("Name")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("IsActive = 1");
 
                     b.HasIndex("Type");
 

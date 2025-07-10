@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace RoomManager.RoomService.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class UpdateToHexagonalArchitecture : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -28,8 +28,8 @@ namespace RoomManager.RoomService.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     Description = table.Column<string>(type: "varchar(500)", maxLength: 500, nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    IsActive = table.Column<bool>(type: "tinyint(1)", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    IsActive = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "UTC_TIMESTAMP()"),
                     UpdatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: true)
                 },
                 constraints: table =>
@@ -37,6 +37,11 @@ namespace RoomManager.RoomService.Migrations
                     table.PrimaryKey("PK_Rooms", x => x.Id);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Rooms_Capacity",
+                table: "Rooms",
+                column: "Capacity");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Rooms_IsActive",
@@ -47,7 +52,8 @@ namespace RoomManager.RoomService.Migrations
                 name: "IX_Rooms_Name",
                 table: "Rooms",
                 column: "Name",
-                unique: true);
+                unique: true,
+                filter: "IsActive = 1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Rooms_Type",
