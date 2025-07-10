@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: roomservice
+  namespace: room-management
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: roomservice
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: userservice
+  namespace: room-management
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: userservice
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bookingservice
+  namespace: room-management
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: bookingservice
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-lb
+  namespace: room-management
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: frontend

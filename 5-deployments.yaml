@@ -1,0 +1,223 @@
+# RoomService Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: roomservice
+  namespace: room-management
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: roomservice
+  template:
+    metadata:
+      labels:
+        app: roomservice
+    spec:
+      containers:
+      - name: roomservice
+        image: roommanagement/roomservice:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 80
+        env:
+        - name: ConnectionStrings__DefaultConnection
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secrets
+              key: roomservice-connection
+        envFrom:
+        - configMapRef:
+            name: room-management-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /swagger/index.html
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /swagger/index.html
+            port: 80
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+---
+# UserService Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: userservice
+  namespace: room-management
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: userservice
+  template:
+    metadata:
+      labels:
+        app: userservice
+    spec:
+      containers:
+      - name: userservice
+        image: roommanagement/userservice:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 80
+        env:
+        - name: ConnectionStrings__DefaultConnection
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secrets
+              key: userservice-connection
+        envFrom:
+        - configMapRef:
+            name: room-management-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /swagger/index.html
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /swagger/index.html
+            port: 80
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+---
+# BookingService Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookingservice
+  namespace: room-management
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bookingservice
+  template:
+    metadata:
+      labels:
+        app: bookingservice
+    spec:
+      containers:
+      - name: bookingservice
+        image: roommanagement/bookingservice:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 80
+        env:
+        - name: ConnectionStrings__DefaultConnection
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secrets
+              key: bookingservice-connection
+        envFrom:
+        - configMapRef:
+            name: room-management-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /swagger/index.html
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /swagger/index.html
+            port: 80
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+---
+# Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: room-management
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: roommanagement/frontend:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 80
+        env:
+        - name: ROOMSERVICE_URL
+          value: "http://roomservice.room-management.svc.cluster.local:80"
+        - name: USERSERVICE_URL
+          value: "http://userservice.room-management.svc.cluster.local:80"
+        - name: BOOKINGSERVICE_URL
+          value: "http://bookingservice.room-management.svc.cluster.local:80"
+        envFrom:
+        - configMapRef:
+            name: room-management-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
