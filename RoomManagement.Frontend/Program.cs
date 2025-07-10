@@ -18,31 +18,39 @@ namespace RoomManagement.Frontend
                 .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true);
 
             builder.Services.AddRadzenComponents();
+
             // Add services to the container.
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents();
 
             builder.AddFrontendServices();
 
-            // Updated to point to separate microservices
+            // Get service URLs from configuration
+            var serviceUrls = builder.Configuration.GetSection("ServiceUrls");
+
+            // Updated to use configuration-based URLs for Docker and localhost
             builder.Services.AddHttpClient<RoomService>(client =>
             {
-                client.BaseAddress = new Uri("https://localhost:7001"); // RoomService
+                var roomServiceUrl = serviceUrls["RoomService"] ?? "https://localhost:7001";
+                client.BaseAddress = new Uri(roomServiceUrl);
             });
 
             builder.Services.AddHttpClient<StudentService>(client =>
             {
-                client.BaseAddress = new Uri("https://localhost:7002"); // UserService
+                var userServiceUrl = serviceUrls["UserService"] ?? "https://localhost:7002";
+                client.BaseAddress = new Uri(userServiceUrl);
             });
 
             builder.Services.AddHttpClient<ProfessorService>(client =>
             {
-                client.BaseAddress = new Uri("https://localhost:7002"); // UserService
+                var userServiceUrl = serviceUrls["UserService"] ?? "https://localhost:7002";
+                client.BaseAddress = new Uri(userServiceUrl);
             });
 
             builder.Services.AddHttpClient<BookingService>(client =>
             {
-                client.BaseAddress = new Uri("https://localhost:7003"); // BookingService
+                var bookingServiceUrl = serviceUrls["BookingService"] ?? "https://localhost:7003";
+                client.BaseAddress = new Uri(bookingServiceUrl);
             });
 
             var app = builder.Build();
@@ -55,7 +63,11 @@ namespace RoomManagement.Frontend
                 app.UseHsts();
             }
 
-            app.UseHttpsRedirection();
+            // Note: In Docker, we don't use HTTPS redirection since we're using HTTP internally
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseHttpsRedirection();
+            }
 
             app.UseAntiforgery();
 

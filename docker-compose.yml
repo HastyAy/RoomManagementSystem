@@ -1,0 +1,159 @@
+services:
+  roomservice-db:
+    image: mysql:8.0
+    container_name: roomservice-db
+    environment:
+      - MYSQL_ROOT_PASSWORD=RoomService123!
+      - MYSQL_DATABASE=RoomServiceDB
+      - MYSQL_USER=roomservice
+      - MYSQL_PASSWORD=RoomService123!
+    ports:
+      - "3306:3306"
+    volumes:
+      - roomservice-db-data:/var/lib/mysql
+    networks:
+      - roommanagement-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pRoomService123!"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  userservice-db:
+    image: mysql:8.0
+    container_name: userservice-db
+    environment:
+      - MYSQL_ROOT_PASSWORD=UserService123!
+      - MYSQL_DATABASE=UserServiceDB
+      - MYSQL_USER=userservice
+      - MYSQL_PASSWORD=UserService123!
+    ports:
+      - "3307:3306"
+    volumes:
+      - userservice-db-data:/var/lib/mysql
+    networks:
+      - roommanagement-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pUserService123!"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  bookingservice-db:
+    image: mysql:8.0
+    container_name: bookingservice-db
+    environment:
+      - MYSQL_ROOT_PASSWORD=BookingService123!
+      - MYSQL_DATABASE=BookingServiceDB
+      - MYSQL_USER=bookingservice
+      - MYSQL_PASSWORD=BookingService123!
+    ports:
+      - "3308:3306"
+    volumes:
+      - bookingservice-db-data:/var/lib/mysql
+    networks:
+      - roommanagement-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pBookingService123!"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Application Services
+  roomservice:
+    build:
+      context: .
+      dockerfile: Dockerfile.roomservice
+    container_name: roomservice
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=server=roomservice-db;database=RoomServiceDB;user=roomservice;password=RoomService123!
+    ports:
+      - "7001:80"
+    depends_on:
+      roomservice-db:
+        condition: service_healthy
+    networks:
+      - roommanagement-network
+    restart: unless-stopped
+    volumes:
+      - ./logs/roomservice:/app/logs
+
+  userservice:
+    build:
+      context: .
+      dockerfile: Dockerfile.userservice
+    container_name: userservice
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=server=userservice-db;database=UserServiceDB;user=userservice;password=UserService123!
+    ports:
+      - "7002:80"
+    depends_on:
+      userservice-db:
+        condition: service_healthy
+    networks:
+      - roommanagement-network
+    restart: unless-stopped
+    volumes:
+      - ./logs/userservice:/app/logs
+
+  bookingservice:
+    build:
+      context: .
+      dockerfile: Dockerfile.bookingservice
+    container_name: bookingservice
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=server=bookingservice-db;database=BookingServiceDB;user=bookingservice;password=BookingService123!
+    ports:
+      - "7003:80"
+    depends_on:
+      bookingservice-db:
+        condition: service_healthy
+    networks:
+      - roommanagement-network
+    restart: unless-stopped
+    volumes:
+      - ./logs/bookingservice:/app/logs
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: frontend
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+    ports:
+      - "80:80"
+    depends_on:
+      - roomservice
+      - userservice
+      - bookingservice
+    networks:
+      - roommanagement-network
+    restart: unless-stopped
+    volumes:
+      - ./logs/frontend:/app/logs
+
+networks:
+  roommanagement-network:
+    driver: bridge
+
+volumes:
+  roomservice-db-data:
+    driver: local
+  userservice-db-data:
+    driver: local
+  bookingservice-db-data:
+    driver: local
